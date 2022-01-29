@@ -1,9 +1,10 @@
 import json
-from bitstring import BitStream, BitArray
+
 import python_nbt.nbt as nbt
+from bitstring import BitStream, BitArray
 
 
-class Schematic:
+class Litematic:
     def __init__(self, file: str):
         self.raw_schem = nbt.NBTTagCompound.json_obj(nbt.read_from_nbt_file(file), full_json=False)
         self.metadata = self.raw_schem['Metadata']
@@ -11,17 +12,26 @@ class Schematic:
         for i, v in self.raw_schem['Regions'].items():
             self.regions[i] = Region(v)
 
+    def block_count(self):
+        return sum([region.block_count() for region in self.regions.values()], MaterialList())
+
+    def inventory_count(self):
+        return sum([region.inventory_count() for region in self.regions.values()], MaterialList())
+
+    def entity_count(self):
+        return sum([region.entity_count() for region in self.regions.values()], MaterialList())
+
+    def total_count(self):
+        return sum([region.total_count() for region in self.regions.values()], MaterialList())
+
     def write_json(self, file):
         with open(file, 'w') as f:
             json.dump(self.raw_schem, f, indent=2)
 
-    def amogus(self):
-        print('ඞ')
 
 class Region:
     def __init__(self, data):
-        self.raw_region = data
-        self.dimensions = {'x': abs(data['Size']['x']), 'y': abs(data['Size']['y']), 'z': abs(data['Size']['z'])}
+        self.dimensions = {k: abs(v) for k, v in data['Size'].items()}
         self.volume = self.dimensions['x'] * self.dimensions['y'] * self.dimensions['z']
         self.palette = data['BlockStatePalette']
         self.block_states = data['BlockStates']
@@ -29,6 +39,8 @@ class Region:
         self.tile_entities = data['TileEntities']
 
     def block_count(self):
+        if not self.block_states or self.block_states == [0]:
+            return MaterialList()
         palette = [i['Name'] for i in self.palette]
         id_span = int.bit_length(len(palette) - 1)
         bit_stream = BitStream()
@@ -56,6 +68,9 @@ class Region:
             except KeyError:
                 entities[i['id']] = 1
         return MaterialList(entities)
+
+    def total_count(self):
+        return self.block_count() + self.inventory_count() + self.entity_count()
 
     @staticmethod
     def item_count(data: dict):
@@ -86,7 +101,9 @@ class Region:
 
 
 class MaterialList:
-    def __init__(self, values: dict):
+    def __init__(self, values: dict = None):
+        if values is None:
+            values = {}
         self.raw_counts = values
         self.keys = []
         self.values = []
@@ -102,30 +119,7 @@ class MaterialList:
                 res[i] = v
         return MaterialList(res)
 
+    # TODO: add __str__ function to return formatted list
+
     def sorted_counts(self):
         return {k: v for k, v in sorted(self.raw_counts.items(), key=lambda item: item[1], reverse=True)}
-
-
-schem = Schematic('CCS Raid Full.litematic')
-schem.write_json('test.json')
-
-rg = 'daisy_pig_6x_Shulker_Box_Loader'
-
-blocks = schem.regions[rg].block_count()
-items = schem.regions[rg].inventory_count()
-entities = schem.regions[rg].entity_count()
-total = blocks + items + entities
-
-print(f"Blocks: {blocks.raw_counts}\n")
-print(f"Items: {items.raw_counts}\n")
-print(f"Entities: {entities.raw_counts}\n")
-print(f"Total: {total.raw_counts}")
-
-with open(f'blocks.json', 'w') as f:
-    json.dump(blocks.sorted_counts(), f, indent=2)
-with open('items.json', 'w') as f:
-    json.dump(items.sorted_counts(), f, indent=2)
-with open('entities.json', 'w') as f:
-    json.dump(entities.sorted_counts(), f, indent=2)
-with open('total.json', 'w') as f:
-    json.dump(total.sorted_counts(), f, indent=2)
