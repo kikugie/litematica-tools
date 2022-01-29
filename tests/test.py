@@ -4,7 +4,7 @@ import litematicparse
 schem = litematicparse.Litematic('CCS_Raid_Full.litematic')
 schem.write_json('test.json')
 
-print(schem.total_count().sorted_counts())
+print(schem.total_count())
 
 print(schem.regions)
 

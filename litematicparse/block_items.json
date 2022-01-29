@@ -1,0 +1,8 @@
+{
+  "minecraft:air": null,
+  "minecraft:piston_head": null,
+  "minecraft:nether_portal": null,
+  "minecraft:fire": null,
+  "minecraft:oak_wall_sign": "minecraft:oak_sign",
+  "minecraft:redstone_wire": "minecraft:redstone"
+}
