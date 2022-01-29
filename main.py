@@ -1,9 +1,7 @@
 import json
-from itertools import chain
 from bitstring import BitStream, BitArray
 import python_nbt.nbt as nbt
 
-import pprint
 
 class Schematic:
     def __init__(self, file: str):
@@ -17,6 +15,8 @@ class Schematic:
         with open(file, 'w') as f:
             json.dump(self.raw_schem, f, indent=2)
 
+    def amogus(self):
+        print('ඞ')
 
 class Region:
     def __init__(self, data):
@@ -33,7 +33,7 @@ class Region:
         id_span = int.bit_length(len(palette) - 1)
         bit_stream = BitStream()
         for i in reversed(self.block_states):
-            bit_stream.append(BitArray(int = i, length = 64))
+            bit_stream.append(BitArray(int=i, length=64))
         bit_stream.pos = bit_stream.len
         block_counts = {i: 0 for i in palette}
         for i in range(self.volume):
@@ -51,8 +51,10 @@ class Region:
     def entity_count(self):
         entities = {}
         for i in self.entities:
-            try: entities[i['id']] += 1
-            except KeyError: entities[i['id']] = 1
+            try:
+                entities[i['id']] += 1
+            except KeyError:
+                entities[i['id']] = 1
         return MaterialList(entities)
 
     @staticmethod
@@ -75,10 +77,13 @@ class Region:
 
         out = {}
         for i in results:
-            try: out[i[0]] += i[1]
-            except KeyError: out[i[0]] = i[1]
+            try:
+                out[i[0]] += i[1]
+            except KeyError:
+                out[i[0]] = i[1]
 
         return MaterialList(out)
+
 
 class MaterialList:
     def __init__(self, values: dict):
@@ -91,15 +96,14 @@ class MaterialList:
     def __add__(self, other):
         res = self.raw_counts
         for i, v in other.raw_counts.items():
-            try: res[i] += v
-            except KeyError: res[i] = v
+            try:
+                res[i] += v
+            except KeyError:
+                res[i] = v
         return MaterialList(res)
 
     def sorted_counts(self):
         return {k: v for k, v in sorted(self.raw_counts.items(), key=lambda item: item[1], reverse=True)}
-
-
-
 
 
 schem = Schematic('CCS Raid Full.litematic')
@@ -116,7 +120,6 @@ print(f"Blocks: {blocks.raw_counts}\n")
 print(f"Items: {items.raw_counts}\n")
 print(f"Entities: {entities.raw_counts}\n")
 print(f"Total: {total.raw_counts}")
-
 
 with open(f'blocks.json', 'w') as f:
     json.dump(blocks.sorted_counts(), f, indent=2)
