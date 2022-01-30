@@ -97,6 +97,9 @@ class Region:
             except KeyError:
                 out[i[0]] = i[1]
 
+        if 'minecraft:air' in out:
+            del out['minecraft:air']
+
         return MaterialList(out)
 
 
