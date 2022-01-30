@@ -148,6 +148,8 @@ class MaterialList:
         return MaterialList(res)
 
     def __str__(self):
+        if not self.raw_counts:
+            return ""
         spacing = max(len(self.get_item_name(k)) for k in self.raw_counts.keys()) + 1
         result = ""
         for k, v in self.sorted_counts().items():
