@@ -8,15 +8,19 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 
 with open(os.path.join(dir_path, 'name_references.json'), 'r') as f:
     name_references = json.load(f)
-with open(os.path.join(dir_path, 'block_items.json'), 'r') as f:
+with open(os.path.join(dir_path, 'block_items.old.json'), 'r') as f:
     block_items = json.load(f)
 
 
 def increment_dict(dictionary, index, value=1):
-    try:
-        dictionary[index] += value
-    except KeyError:
-        dictionary[index] = value
+    if type(index) == list:
+        for i in index:
+            dictionary = increment_dict(dictionary, i)
+    else:
+        try:
+            dictionary[index] += value
+        except KeyError:
+            dictionary[index] = value
     return dictionary
 
 
