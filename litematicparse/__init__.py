@@ -54,23 +54,19 @@ class Region:
         self.dimensions = {k: abs(v) for k, v in data['Size'].items()}
         self.volume = self.dimensions['x'] * self.dimensions['y'] * self.dimensions['z']
         self.palette = data['BlockStatePalette']
-        self.block_states = data['BlockStates']
+        self.block_states = BitStream()
+        for i in reversed(data['BlockStates']):
+            self.block_states.append(BitArray(int=i, length=64))
         self.entities = data['Entities']
         self.tile_entities = data['TileEntities']
 
+    def get_id_span(self):
+        return int.bit_length(len(self.palette) - 1)
+
     def block_count(self):
-        if not self.block_states or self.block_states == [0]:
-            return MaterialList()
-        palette = [i['Name'] for i in self.palette]
-        id_span = int.bit_length(len(palette) - 1)
-        bit_stream = BitStream()
-        for i in reversed(self.block_states):
-            bit_stream.append(BitArray(int=i, length=64))
-        bit_stream.pos = bit_stream.len
         block_counts = {}
-        for i in range(self.volume):
-            bit_stream.pos -= id_span
-            item = self.get_block_item(palette[bit_stream.peek(f'uint:{id_span}')])
+        for block in self.block_iterator():
+            item = self.get_block_item(block)
             if item:
                 block_counts = increment_dict(block_counts, item)
         return MaterialList(block_counts)
@@ -89,9 +85,29 @@ class Region:
     def total_count(self):
         return self.block_count() + self.inventory_count() + self.entity_count()
 
+    def get_block(self, x, y, z):
+        id_span = self.get_id_span()
+        pos = x
+        pos += z * self.dimensions['x']
+        pos += y * self.dimensions['x'] * self.dimensions['z']
+
+        self.block_states.pos = self.block_states.len - (pos + 1) * id_span
+        return self.palette[self.block_states.peek(f'uint:{id_span}')]
+
+    def block_iterator(self):
+        id_span = self.get_id_span()
+        for i in range(self.volume):
+            pos = (self.volume - i) * id_span
+            block_num = self.block_states[pos:pos+id_span].uint
+            yield self.get_block_from_num(block_num)
+
+    def get_block_from_num(self, block_num):
+        return self.palette[block_num]  # this is here so we can replace it with a method to generate a BlockState later
+
     @staticmethod
     def get_block_item(block):
         global block_items
+        block = block['Name']
         try:
             return block_items[block]
         except KeyError:
@@ -153,7 +169,7 @@ class MaterialList:
         spacing = max(len(self.get_item_name(k)) for k in self.raw_counts.keys()) + 1
         result = ""
         for k, v in self.sorted_counts().items():
-            result += "{:<{s}} {}\n".format(self.get_item_name(k)+":", v, s=spacing)
+            result += "{:<{s}} {}\n".format(self.get_item_name(k) + ":", v, s=spacing)
         return result
 
     def sorted_counts(self):
