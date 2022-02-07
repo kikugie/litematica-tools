@@ -2,7 +2,7 @@ import json
 import os
 
 import python_nbt.nbt as nbt
-from bitstring import BitStream, BitArray
+from bitstring import BitStream
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -64,8 +64,8 @@ class Region:
         palette = [i['Name'] for i in self.palette]
         id_span = int.bit_length(len(palette) - 1)
         bit_stream = BitStream()
-        for i in reversed(self.block_states):
-            bit_stream.append(BitArray(int=i, length=64))
+        for i in self.block_states:
+            bit_stream.append(BitStream(int=i, length=64))
         bit_stream.pos = bit_stream.len
         block_counts = {}
         for i in range(self.volume):
@@ -126,6 +126,48 @@ class Region:
             del out['minecraft:air']
 
         return MaterialList(out)
+
+class Block:
+    def __init__(self, block_id, properties):
+        self.block_id = block_id
+        self.name = '' # match from names json
+        # tags moved to the item level
+
+class BlockState:
+    def __init__(self, pos, values: dict):
+        self.pos = tuple(pos)
+        self.properties = values.pop('Properties') # properties will be handled at the block state level
+        self.block = Block(values['Name'])
+        self.tile_entity_data = TileEntity(pos) # link to tile entity data, if no tile entity return null
+        self.block_item = [] # list of ItemStack objects
+
+
+class Entity:
+    def __init__(self, entity):
+        self.entity_id = entity.pop('id')
+        self.items = [] # method to lookup and handle item stacks
+        self.entity_data = entity
+
+class TileEntity:
+    def __init__(self, pos):
+        pass #some method to yoink tile entity from the region object
+
+class Inventory:
+    def __init__(self):
+        self.items = [] # list of ItemStack objects idk handle it somehow
+
+class ItemStack:
+    def __init__(self, values: dict):
+        self.slot = values['Slot']
+        self.count = values['Count']
+        # need some way to handle nested inventories
+
+class Item:
+    def __init__(self, item_id):
+        self.item_id = item_id
+        self.name = ''
+        self.stack_size = 0
+        self.tags = []
 
 
 class MaterialList:
