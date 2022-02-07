@@ -1,7 +1,27 @@
 import json
+import os
 
 import python_nbt.nbt as nbt
 from bitstring import BitStream, BitArray
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
+with open(os.path.join(dir_path, 'name_references.json'), 'r') as f:
+    name_references = json.load(f)
+with open(os.path.join(dir_path, 'block_items.old.json'), 'r') as f:
+    block_items = json.load(f)
+
+
+def increment_dict(dictionary, index, value=1):
+    if type(index) == list:
+        for i in index:
+            dictionary = increment_dict(dictionary, i)
+    else:
+        try:
+            dictionary[index] += value
+        except KeyError:
+            dictionary[index] = value
+    return dictionary
 
 
 class Litematic:
@@ -47,12 +67,12 @@ class Region:
         for i in reversed(self.block_states):
             bit_stream.append(BitArray(int=i, length=64))
         bit_stream.pos = bit_stream.len
-        block_counts = {i: 0 for i in palette}
+        block_counts = {}
         for i in range(self.volume):
             bit_stream.pos -= id_span
-            block_counts[palette[bit_stream.peek(f'uint:{id_span}')]] += 1
-        if 'minecraft:air' in block_counts:
-            del block_counts['minecraft:air']
+            item = self.get_block_item(palette[bit_stream.peek(f'uint:{id_span}')])
+            if item:
+                block_counts = increment_dict(block_counts, item)
         return MaterialList(block_counts)
 
     def inventory_count(self):
@@ -63,14 +83,19 @@ class Region:
     def entity_count(self):
         entities = {}
         for i in self.entities:
-            try:
-                entities[i['id']] += 1
-            except KeyError:
-                entities[i['id']] = 1
+            entities = increment_dict(entities, i['id'])
         return MaterialList(entities)
 
     def total_count(self):
         return self.block_count() + self.inventory_count() + self.entity_count()
+
+    @staticmethod
+    def get_block_item(block):
+        global block_items
+        try:
+            return block_items[block]
+        except KeyError:
+            return block
 
     @staticmethod
     def item_count(data: dict):
@@ -122,7 +147,20 @@ class MaterialList:
                 res[i] = v
         return MaterialList(res)
 
-    # TODO: add __str__ function to return formatted list
+    def __str__(self):
+        spacing = max(len(self.get_item_name(k)) for k in self.raw_counts.keys()) + 1
+        result = ""
+        for k, v in self.sorted_counts().items():
+            result += "{:<{s}} {}\n".format(self.get_item_name(k)+":", v, s=spacing)
+        return result
 
     def sorted_counts(self):
         return {k: v for k, v in sorted(self.raw_counts.items(), key=lambda item: item[1], reverse=True)}
+
+    @staticmethod
+    def get_item_name(item_id):
+        global name_references
+        try:
+            return name_references[item_id]
+        except KeyError:
+            return item_id
