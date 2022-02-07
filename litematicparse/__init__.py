@@ -2,13 +2,13 @@ import json
 import os
 
 import python_nbt.nbt as nbt
-from bitstring import BitStream
+from bitstring import BitStream, BitArray, InterpretError
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 with open(os.path.join(dir_path, 'name_references.json'), 'r') as f:
     name_references = json.load(f)
-with open(os.path.join(dir_path, 'block_items.old.json'), 'r') as f:
+with open(os.path.join(dir_path, 'block_items.json'), 'r') as f:
     block_items = json.load(f)
 
 
@@ -54,23 +54,19 @@ class Region:
         self.dimensions = {k: abs(v) for k, v in data['Size'].items()}
         self.volume = self.dimensions['x'] * self.dimensions['y'] * self.dimensions['z']
         self.palette = data['BlockStatePalette']
-        self.block_states = data['BlockStates']
+        self.block_states = BitStream()
+        for i in reversed(data['BlockStates']):
+            self.block_states.append(BitArray(int=i, length=64))
         self.entities = data['Entities']
         self.tile_entities = data['TileEntities']
 
+    def get_id_span(self):
+        return int.bit_length(len(self.palette) - 1)
+
     def block_count(self):
-        if not self.block_states or self.block_states == [0]:
-            return MaterialList()
-        palette = [i['Name'] for i in self.palette]
-        id_span = int.bit_length(len(palette) - 1)
-        bit_stream = BitStream()
-        for i in self.block_states:
-            bit_stream.append(BitStream(int=i, length=64))
-        bit_stream.pos = bit_stream.len
         block_counts = {}
-        for i in range(self.volume):
-            bit_stream.pos -= id_span
-            item = self.get_block_item(palette[bit_stream.peek(f'uint:{id_span}')])
+        for block in self.block_iterator():
+            item = self.get_block_item(block)
             if item:
                 block_counts = increment_dict(block_counts, item)
         return MaterialList(block_counts)
@@ -88,6 +84,31 @@ class Region:
 
     def total_count(self):
         return self.block_count() + self.inventory_count() + self.entity_count()
+
+    def get_block(self, x, y, z):
+        id_span = self.get_id_span()
+        pos = x
+        pos += z * self.dimensions['x']
+        pos += y * self.dimensions['x'] * self.dimensions['z']
+
+        try:
+            self.block_states.pos = self.block_states.len - (pos + 1) * id_span
+            return self.palette[self.block_states.peek(f'uint:{id_span}')]
+        except InterpretError:
+            return OutOfBoundsError("Block location outside of region boundaries.")
+
+    def block_iterator(self):
+        id_span = self.get_id_span()
+        try:
+            for i in range(self.volume):
+                pos = self.block_states.len - (i + 1) * id_span
+                block_num = self.block_states[pos:pos + id_span].uint
+                yield self.get_block_from_num(block_num)
+        except InterpretError:
+            return []
+
+    def get_block_from_num(self, block_num):
+        return self.palette[block_num]  # this is here so we can replace it with a method to generate a BlockState later
 
     @staticmethod
     def get_block_item(block):
@@ -127,40 +148,46 @@ class Region:
 
         return MaterialList(out)
 
+
 class Block:
     def __init__(self, block_id, properties):
         self.block_id = block_id
-        self.name = '' # match from names json
+        self.name = ''  # match from names json
         # tags moved to the item level
+
 
 class BlockState:
     def __init__(self, pos, values: dict):
         self.pos = tuple(pos)
-        self.properties = values.pop('Properties') # properties will be handled at the block state level
+        self.properties = values.pop('Properties')  # properties will be handled at the block state level
         self.block = Block(values['Name'])
-        self.tile_entity_data = TileEntity(pos) # link to tile entity data, if no tile entity return null
-        self.block_item = [] # list of ItemStack objects
+        self.tile_entity_data = TileEntity(pos)  # link to tile entity data, if no tile entity return null
+        self.block_item = []  # list of ItemStack objects
 
 
 class Entity:
     def __init__(self, entity):
         self.entity_id = entity.pop('id')
-        self.items = [] # method to lookup and handle item stacks
+        self.items = []  # method to lookup and handle item stacks
         self.entity_data = entity
+
 
 class TileEntity:
     def __init__(self, pos):
-        pass #some method to yoink tile entity from the region object
+        pass  # some method to yoink tile entity from the region object
+
 
 class Inventory:
     def __init__(self):
-        self.items = [] # list of ItemStack objects idk handle it somehow
+        self.items = []  # list of ItemStack objects idk handle it somehow
+
 
 class ItemStack:
     def __init__(self, values: dict):
         self.slot = values['Slot']
         self.count = values['Count']
         # need some way to handle nested inventories
+
 
 class Item:
     def __init__(self, item_id):
@@ -190,10 +217,12 @@ class MaterialList:
         return MaterialList(res)
 
     def __str__(self):
+        if not self.raw_counts:
+            return ""
         spacing = max(len(self.get_item_name(k)) for k in self.raw_counts.keys()) + 1
         result = ""
         for k, v in self.sorted_counts().items():
-            result += "{:<{s}} {}\n".format(self.get_item_name(k)+":", v, s=spacing)
+            result += "{:<{s}} {}\n".format(self.get_item_name(k) + ":", v, s=spacing)
         return result
 
     def sorted_counts(self):
@@ -206,3 +235,14 @@ class MaterialList:
             return name_references[item_id]
         except KeyError:
             return item_id
+
+
+class OutOfBoundsError(Exception):
+    def __init__(self, *params):
+        self.msg = params[0] if params else ''
+        self.params = params[1:]
+
+    def __str__(self):
+        if self.params:
+            return self.msg.format(*self.params)
+        return self.msg
