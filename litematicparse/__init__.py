@@ -2,13 +2,13 @@ import json
 import os
 
 import python_nbt.nbt as nbt
-from bitstring import BitStream, BitArray
+from bitstring import BitStream, BitArray, InterpretError
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 with open(os.path.join(dir_path, 'name_references.json'), 'r') as f:
     name_references = json.load(f)
-with open(os.path.join(dir_path, 'block_items.old.json'), 'r') as f:
+with open(os.path.join(dir_path, 'block_items.json'), 'r') as f:
     block_items = json.load(f)
 
 
@@ -91,15 +91,21 @@ class Region:
         pos += z * self.dimensions['x']
         pos += y * self.dimensions['x'] * self.dimensions['z']
 
-        self.block_states.pos = self.block_states.len - (pos + 1) * id_span
-        return self.palette[self.block_states.peek(f'uint:{id_span}')]
+        try:
+            self.block_states.pos = self.block_states.len - (pos + 1) * id_span
+            return self.palette[self.block_states.peek(f'uint:{id_span}')]
+        except InterpretError:
+            return OutOfBoundsError("Block location outside of region boundaries.")
 
     def block_iterator(self):
         id_span = self.get_id_span()
-        for i in range(self.volume):
-            pos = (self.volume - i) * id_span
-            block_num = self.block_states[pos:pos+id_span].uint
-            yield self.get_block_from_num(block_num)
+        try:
+            for i in range(self.volume):
+                pos = self.block_states.len - (i + 1) * id_span
+                block_num = self.block_states[pos:pos + id_span].uint
+                yield self.get_block_from_num(block_num)
+        except InterpretError:
+            return []
 
     def get_block_from_num(self, block_num):
         return self.palette[block_num]  # this is here so we can replace it with a method to generate a BlockState later
@@ -182,3 +188,14 @@ class MaterialList:
             return name_references[item_id]
         except KeyError:
             return item_id
+
+
+class OutOfBoundsError(Exception):
+    def __init__(self, *params):
+        self.msg = params[0] if params else ''
+        self.params = params[1:]
+
+    def __str__(self):
+        if self.params:
+            return self.msg.format(*self.params)
+        return self.msg

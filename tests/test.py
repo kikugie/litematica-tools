@@ -1,17 +1,18 @@
 import json
 import litematicparse
 
-schem = litematicparse.Litematic('3x3 piston door.litematic')
+schem = litematicparse.Litematic('CCS_Raid_Full.litematic')
 schem.write_json('test.json')
 
-print(schem.block_count())
+#print(schem.block_count())
 
 print(schem.regions)
 
 
-rg = '3x3 piston door'
+rg = 'Y:63, Chunk coords: 0, 0'
 
-print(schem.regions[rg].get_block(0, 1, 1))
+#print(schem.regions[rg].get_block(0, 0, 1))
+print(schem.regions[rg].block_count())
 
 for i in schem.regions[rg].block_iterator():
     print(i)
