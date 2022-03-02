@@ -1,0 +1,265 @@
+{
+  "minecraft:acacia_wall_sign": "minecraft:acacia_sign",
+  "minecraft:attached_melon_stem": "minecraft:melon_seeds",
+  "minecraft:attached_pumpkin_stem": "minecraft:pumpkin_seeds",
+  "minecraft:bamboo_sapling": "minecraft:bamboo",
+  "minecraft:beetroots": "minecraft:beetroot_seeds",
+  "minecraft:big_dripleaf_stem": "minecraft:big_dripleaf",
+  "minecraft:birch_wall_sign": "minecraft:birch_sign",
+  "minecraft:black_candle_cake": [
+    "minecraft:cake",
+    "minecraft:black_candle"
+  ],
+  "minecraft:black_wall_banner": "minecraft:black_banner",
+  "minecraft:blue_candle_cake": [
+    "minecraft:cake",
+    "minecraft:blue_candle"
+  ],
+  "minecraft:blue_wall_banner": "minecraft:blue_banner",
+  "minecraft:brain_coral_wall_fan": "minecraft:brain_coral_fan",
+  "minecraft:brown_candle_cake": [
+    "minecraft:cake",
+    "minecraft:brown_candle"
+  ],
+  "minecraft:brown_wall_banner": "minecraft:brown_banner",
+  "minecraft:bubble_column": "minecraft:water_bucket",
+  "minecraft:bubble_coral_wall_fan": "minecraft:bubble_coral_fan",
+  "minecraft:candle_cake": [
+    "minecraft:cake",
+    "minecraft:candle"
+  ],
+  "minecraft:carrots": "minecraft:carrot",
+  "minecraft:cave_vines": "minecraft:glow_berries",
+  "minecraft:cave_vines_plant": "minecraft:glow_berries",
+  "minecraft:cocoa": "minecraft:cocoa_beans",
+  "minecraft:creeper_wall_head": "minecraft:creeper_head",
+  "minecraft:crimson_wall_sign": "minecraft:crimson_sign",
+  "minecraft:cyan_candle_cake": [
+    "minecraft:cake",
+    "minecraft:cyan_candle"
+  ],
+  "minecraft:cyan_wall_banner": "minecraft:cyan_banner",
+  "minecraft:dark_oak_wall_sign": "minecraft:dark_oak_sign",
+  "minecraft:dead_brain_coral_wall_fan": "minecraft:dead_brain_coral_fan",
+  "minecraft:dead_bubble_coral_wall_fan": "minecraft:dead_bubble_coral_fan",
+  "minecraft:dead_fire_coral_wall_fan": "minecraft:dead_fire_coral_fan",
+  "minecraft:dead_horn_coral_wall_fan": "minecraft:dead_horn_coral_fan",
+  "minecraft:dead_tube_coral_wall_fan": "minecraft:dead_tube_coral_fan",
+  "minecraft:dragon_wall_head": "minecraft:dragon_head",
+  "minecraft:fire_coral_wall_fan": "minecraft:fire_coral_fan",
+  "minecraft:frosted_ice": "minecraft:water_bucket",
+  "minecraft:gray_candle_cake": [
+    "minecraft:cake",
+    "minecraft:gray_candle"
+  ],
+  "minecraft:gray_wall_banner": "minecraft:gray_banner",
+  "minecraft:green_candle_cake": [
+    "minecraft:cake",
+    "minecraft:green_candle"
+  ],
+  "minecraft:green_wall_banner": "minecraft:green_banner",
+  "minecraft:horn_coral_wall_fan": "minecraft:horn_coral_fan",
+  "minecraft:jungle_wall_sign": "minecraft:jungle_sign",
+  "minecraft:kelp_plant": "minecraft:kelp",
+  "minecraft:lava": "minecraft:lava_bucket",
+  "minecraft:lava_cauldron": "minecraft:cauldron",
+  "minecraft:light_blue_candle_cake": [
+    "minecraft:cake",
+    "minecraft:light_blue_candle"
+  ],
+  "minecraft:light_blue_wall_banner": "minecraft:light_blue_banner",
+  "minecraft:light_gray_candle_cake": [
+    "minecraft:cake",
+    "minecraft:light_gray_candle"
+  ],
+  "minecraft:light_gray_wall_banner": "minecraft:light_gray_banner",
+  "minecraft:lime_candle_cake": [
+    "minecraft:cake",
+    "minecraft:lime_candle"
+  ],
+  "minecraft:lime_wall_banner": "minecraft:lime_banner",
+  "minecraft:magenta_candle_cake": [
+    "minecraft:cake",
+    "minecraft:magenta_candle"
+  ],
+  "minecraft:magenta_wall_banner": "minecraft:magenta_banner",
+  "minecraft:melon_stem": "minecraft:melon_seeds",
+  "minecraft:oak_wall_sign": "minecraft:oak_sign",
+  "minecraft:orange_candle_cake": [
+    "minecraft:cake",
+    "minecraft:orange_candle"
+  ],
+  "minecraft:orange_wall_banner": "minecraft:orange_banner",
+  "minecraft:pink_candle_cake": [
+    "minecraft:cake",
+    "minecraft:pink_candle"
+  ],
+  "minecraft:pink_wall_banner": "minecraft:pink_banner",
+  "minecraft:player_wall_head": "minecraft:player_head",
+  "minecraft:potatoes": "minecraft:potato",
+  "minecraft:potted_acacia_sapling": [
+    "minecraft:flower_pot",
+    "minecraft:acacia_sapling"
+  ],
+  "minecraft:potted_allium": [
+    "minecraft:flower_pot",
+    "minecraft:allium"
+  ],
+  "minecraft:potted_azalea_bush": [
+    "minecraft:flower_pot",
+    "minecraft:azalea_bush"
+  ],
+  "minecraft:potted_azure_bluet": [
+    "minecraft:flower_pot",
+    "minecraft:azure_bluet"
+  ],
+  "minecraft:potted_bamboo": [
+    "minecraft:flower_pot",
+    "minecraft:bamboo"
+  ],
+  "minecraft:potted_birch_sapling": [
+    "minecraft:flower_pot",
+    "minecraft:birch_sapling"
+  ],
+  "minecraft:potted_blue_orchid": [
+    "minecraft:flower_pot",
+    "minecraft:blue_orchid"
+  ],
+  "minecraft:potted_brown_mushroom": [
+    "minecraft:flower_pot",
+    "minecraft:brown_mushroom"
+  ],
+  "minecraft:potted_cactus": [
+    "minecraft:flower_pot",
+    "minecraft:cactus"
+  ],
+  "minecraft:potted_cornflower": [
+    "minecraft:flower_pot",
+    "minecraft:cornflower"
+  ],
+  "minecraft:potted_crimson_fungus": [
+    "minecraft:flower_pot",
+    "minecraft:crimson_fungus"
+  ],
+  "minecraft:potted_crimson_roots": [
+    "minecraft:flower_pot",
+    "minecraft:crimson_roots"
+  ],
+  "minecraft:potted_dandelion": [
+    "minecraft:flower_pot",
+    "minecraft:dandelion"
+  ],
+  "minecraft:potted_dark_oak_sapling": [
+    "minecraft:flower_pot",
+    "minecraft:dark_oak_sapling"
+  ],
+  "minecraft:potted_dead_bush": [
+    "minecraft:flower_pot",
+    "minecraft:dead_bush"
+  ],
+  "minecraft:potted_fern": [
+    "minecraft:flower_pot",
+    "minecraft:fern"
+  ],
+  "minecraft:potted_flowering_azalea_bush": [
+    "minecraft:flower_pot",
+    "minecraft:flowering_azalea_bush"
+  ],
+  "minecraft:potted_jungle_sapling": [
+    "minecraft:flower_pot",
+    "minecraft:jungle_sapling"
+  ],
+  "minecraft:potted_lily_of_the_valley": [
+    "minecraft:flower_pot",
+    "minecraft:lily_of_the_valley"
+  ],
+  "minecraft:potted_oak_sapling": [
+    "minecraft:flower_pot",
+    "minecraft:oak_sapling"
+  ],
+  "minecraft:potted_orange_tulip": [
+    "minecraft:flower_pot",
+    "minecraft:orange_tulip"
+  ],
+  "minecraft:potted_oxeye_daisy": [
+    "minecraft:flower_pot",
+    "minecraft:oxeye_daisy"
+  ],
+  "minecraft:potted_pink_tulip": [
+    "minecraft:flower_pot",
+    "minecraft:pink_tulip"
+  ],
+  "minecraft:potted_poppy": [
+    "minecraft:flower_pot",
+    "minecraft:poppy"
+  ],
+  "minecraft:potted_red_mushroom": [
+    "minecraft:flower_pot",
+    "minecraft:red_mushroom"
+  ],
+  "minecraft:potted_red_tulip": [
+    "minecraft:flower_pot",
+    "minecraft:red_tulip"
+  ],
+  "minecraft:potted_spruce_sapling": [
+    "minecraft:flower_pot",
+    "minecraft:spruce_sapling"
+  ],
+  "minecraft:potted_warped_fungus": [
+    "minecraft:flower_pot",
+    "minecraft:warped_fungus"
+  ],
+  "minecraft:potted_warped_roots": [
+    "minecraft:flower_pot",
+    "minecraft:warped_roots"
+  ],
+  "minecraft:potted_white_tulip": [
+    "minecraft:flower_pot",
+    "minecraft:white_tulip"
+  ],
+  "minecraft:potted_wither_rose": [
+    "minecraft:flower_pot",
+    "minecraft:wither_rose"
+  ],
+  "minecraft:powder_snow": "minecraft:powder_snow_bucket",
+  "minecraft:powder_snow_cauldron": "minecraft:cauldron",
+  "minecraft:pumpkin_stem": "minecraft:pumpkin_seeds",
+  "minecraft:purple_candle_cake": [
+    "minecraft:cake",
+    "minecraft:purple_candle"
+  ],
+  "minecraft:purple_wall_banner": "minecraft:purple_banner",
+  "minecraft:red_candle_cake": [
+    "minecraft:cake",
+    "minecraft:red_candle"
+  ],
+  "minecraft:red_wall_banner": "minecraft:red_banner",
+  "minecraft:redstone_wall_torch": "minecraft:redstone_torch",
+  "minecraft:redstone_wire": "minecraft:redstone",
+  "minecraft:skeleton_wall_skull": "minecraft:skeleton_skull",
+  "minecraft:soul_wall_torch": "minecraft:soul_torch",
+  "minecraft:spruce_wall_sign": "minecraft:spruce_sign",
+  "minecraft:sweet_berry_bush": "minecraft:sweet_berries",
+  "minecraft:tall_seagrass": "minecraft:tall_seagrass",
+  "minecraft:tripwire": "minecraft:string",
+  "minecraft:tube_coral_wall_fan": "minecraft:tube_coral_fan",
+  "minecraft:twisting_vines_plant": "twisting_vines",
+  "minecraft:wall_torch": "minecraft:torch",
+  "minecraft:warped_wall_sign": "minecraft:warped_sign",
+  "minecraft:water": "minecraft:water_bucket",
+  "minecraft:water_cauldron": "minecraft:cauldron",
+  "minecraft:weeping_vines_plant": "minecraft:weeping_vines",
+  "minecraft:wheat": "minecraft:wheat_seeds",
+  "minecraft:white_candle_cake": [
+    "minecraft:cake",
+    "minecraft:white_candle"
+  ],
+  "minecraft:white_wall_banner": "minecraft:white_banner",
+  "minecraft:wither_skeleton_wall_skull": "minecraft:wither_skeleton_skull",
+  "minecraft:yellow_candle_cake": [
+    "minecraft:cake",
+    "minecraft:yellow_candle"
+  ],
+  "minecraft:yellow_wall_banner": "minecraft:yellow_banner",
+  "minecraft:zombie_wall_head": "minecraft:zombie_head"
+}

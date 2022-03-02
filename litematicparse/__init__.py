@@ -150,7 +150,7 @@ class Region:
 
 
 class Block:
-    def __init__(self, block_id, properties):
+    def __init__(self, block_id):
         self.block_id = block_id
         self.name = ''  # match from names json
         # tags moved to the item level
@@ -190,11 +190,18 @@ class ItemStack:
 
 
 class Item:
+    with open('stack_sizes.json', 'r') as f:
+        stack_sizes = json.load(f)
+    with open('name_references.json', 'r') as f:
+        item_names = json.load(f)
+    with open('tags.json', 'r') as f:
+        tag_list = json.load(f)
+
     def __init__(self, item_id):
-        self.item_id = item_id
-        self.name = ''
-        self.stack_size = 0
-        self.tags = []
+        self.item = item_id
+        self.name = self.item_names[item_id]
+        self.stack_size = self.stack_sizes[item_id]
+        self.tags = self.tag_list(item_id)
 
 
 class MaterialList:
