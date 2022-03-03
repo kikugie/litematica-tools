@@ -1,32 +1,24 @@
-import json
 import time
 
-from litematic_parser import Schematic, MaterialList
+from main import Schematic, MaterialList
+from main.material_list import sort, localize
 
-
-
-
+x = {}
 times = []
-decoder_times = []
-list_times = []
 for i in range(1):
     start = time.time()
     schem = Schematic('main_storage.litematic')
-    raw_matl = MaterialList(schem.regions['main_storage'])
-    matl = raw_matl.block_list()
+    print(f'File: {schem.file}')
+    bmatl = localize(sort(MaterialList(schem).block_list()))
+    imatl = localize(sort(MaterialList(schem).item_list()))
+    ematl = localize(sort(MaterialList(schem).entity_list()))
     end = time.time()
-    times.append(end-start)
-    decoder_times.append(schem.regions['main_storage'].times)
-    list_times.append(raw_matl.times)
-print(f'Total time: {sum(times)/len(times)} s')
+    times.append(end - start)
 
-decoder_times = [j for sub in decoder_times for j in sub]
-print(f'Decoder time: {sum(decoder_times)/len(decoder_times)} s')
+    print(f'Blocks: {bmatl}')
+    print(f'Items: {imatl}')
+    print(f'Entities: {ematl}')
 
-list_times = [j for sub in list_times for j in sub]
-print(f'List time: {sum(list_times)/len(list_times)} s')
+print(f'Total time: {sum(times) / len(times)} s')
 
-# x = dict(sorted(matl.items(), key=lambda item: item[1], reverse=True))
-#
-# with open('ms.json', 'w') as f:
-#     json.dump(x, f, indent=2)
+

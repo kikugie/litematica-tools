@@ -1,2 +1,1 @@
-bitstring~=3.1.9
-python_nbt~=1.2.0
+nbtlib~=2.0.4

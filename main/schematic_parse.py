@@ -1,25 +1,5 @@
-import math
 import re
-import time
-
 import nbtlib as nbt
-import numpy as np
-
-def nbt_to_python(value):
-    # 0 IQ method bcos I want quick universal convert
-    match type(value):
-        case nbt.tag.Byte, nbt.tag.Int, nbt.tag.Short, nbt.tag.Long:
-            return int(value)
-        case nbt.tag.Float, nbt.tag.Double:
-            return float(value)
-        case nbt.tag.String:
-            return str(value)
-        case nbt.tag.ByteArray, nbt.tag.IntArray, nbt.tag.LongArray:
-            return np.ndarray(value)
-        case nbt.tag.List:
-            return list(value)
-        case nbt.tag.Compound:
-            return dict(value)
 
 def snake_case(text):
     return '_'.join([k.lower() for k in re.split('(?=[A-Z])\B', text)])
@@ -58,7 +38,7 @@ class Region:
     def __init__(self, data):
         self.nbt = data
         self.dimensions = tuple(abs(int(i)) for i in self.nbt['Size'].values())
-        self.volume = np.product(self.dimensions)
+        self.volume = self.dimensions[0] * self.dimensions[1] * self.dimensions[2]
         self.bit_width = int.bit_length(len(self.nbt['BlockStatePalette']) - 1)
 
     def get_block_state(self, index):

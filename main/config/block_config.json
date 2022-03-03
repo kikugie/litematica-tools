@@ -110,7 +110,7 @@
   ],
   "minecraft:potted_azalea_bush": [
     "minecraft:flower_pot",
-    "minecraft:azalea_bush"
+    "minecraft:azalea"
   ],
   "minecraft:potted_azure_bluet": [
     "minecraft:flower_pot",
@@ -166,7 +166,7 @@
   ],
   "minecraft:potted_flowering_azalea_bush": [
     "minecraft:flower_pot",
-    "minecraft:flowering_azalea_bush"
+    "minecraft:flowering_azalea"
   ],
   "minecraft:potted_jungle_sapling": [
     "minecraft:flower_pot",
