@@ -1,2 +1,5 @@
-# litematica-tools-dev
-Python script for doing stuff with litematica files
+# litematica-tools
+Python scripts for doing stuff with litematica files
+
+WARNING!
+Main branch is currently unstable
