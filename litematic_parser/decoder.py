@@ -29,7 +29,7 @@ class Schematic:
         self.file = file
         self.file_format = self.get_file_format()
         with open(self.file, 'rb') as f:
-            self.nbt = nbt.File.load(f, gzipped=True)
+            self.nbt = nbt.File.load(f, gzipped=True).unpack()
         self.metadata = self.get_metadata()
         self.data_version = self.nbt['MinecraftDataVersion']
         self.version = self.nbt['Version']
@@ -55,29 +55,22 @@ class Schematic:
 
 
 class Region:
-    times = []
-    def __init__(self, data: nbt.tag.Compound):
+    def __init__(self, data):
         self.nbt = data
         self.dimensions = tuple(abs(int(i)) for i in self.nbt['Size'].values())
         self.volume = np.product(self.dimensions)
         self.bit_width = int.bit_length(len(self.nbt['BlockStatePalette']) - 1)
 
     def get_block_state(self, index):
-        start = time.time()
         start_offset = index * self.bit_width
         start_arr_index = start_offset >> 6
         end_arr_index = ((index + 1) * self.bit_width - 1) >> 6
         start_bit_offset = start_offset & 0x3F
-        shift = nbt.Long((1 << self.bit_width) - 1)
+        shift = (1 << self.bit_width) - 1
 
         if start_arr_index == end_arr_index:
-            index = self.nbt['BlockStates'][start_arr_index] >> start_bit_offset & shift
+            out = self.nbt['BlockStates'][start_arr_index] >> start_bit_offset & shift
         else:
             end_offset = 64 - start_bit_offset
-            index = (abs(self.nbt['BlockStates'][start_arr_index] >> start_bit_offset) | self.nbt['BlockStates'][end_arr_index] << end_offset) & shift
-
-        end = time.time()
-        self.times.append(end-start)
-
-        return index
-
+            out = (abs(self.nbt['BlockStates'][start_arr_index] >> start_bit_offset) | self.nbt['BlockStates'][end_arr_index] << end_offset) & shift
+        return out

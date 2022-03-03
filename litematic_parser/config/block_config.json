@@ -62,7 +62,10 @@
   "minecraft:jungle_wall_sign": "minecraft:jungle_sign",
   "minecraft:kelp_plant": "minecraft:kelp",
   "minecraft:lava": "minecraft:lava_bucket",
-  "minecraft:lava_cauldron": "minecraft:cauldron",
+  "minecraft:lava_cauldron": [
+    "minecraft:cauldron",
+    "minecraft:lava_bucket"
+  ],
   "minecraft:light_blue_candle_cake": [
     "minecraft:cake",
     "minecraft:light_blue_candle"
@@ -222,7 +225,10 @@
     "minecraft:wither_rose"
   ],
   "minecraft:powder_snow": "minecraft:powder_snow_bucket",
-  "minecraft:powder_snow_cauldron": "minecraft:cauldron",
+  "minecraft:powder_snow_cauldron": [
+    "minecraft:cauldron",
+    "minecraft:powder_snow_bucket"
+  ],
   "minecraft:pumpkin_stem": "minecraft:pumpkin_seeds",
   "minecraft:purple_candle_cake": [
     "minecraft:cake",
@@ -247,7 +253,10 @@
   "minecraft:wall_torch": "minecraft:torch",
   "minecraft:warped_wall_sign": "minecraft:warped_sign",
   "minecraft:water": "minecraft:water_bucket",
-  "minecraft:water_cauldron": "minecraft:cauldron",
+  "minecraft:water_cauldron": [
+    "minecraft:cauldron",
+    "minecraft:water_bucket"
+  ],
   "minecraft:weeping_vines_plant": "minecraft:weeping_vines",
   "minecraft:wheat": "minecraft:wheat_seeds",
   "minecraft:white_candle_cake": [
