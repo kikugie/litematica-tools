@@ -1,7 +1,7 @@
 import json
 import re
 
-from .schematic_parse import Region, Schematic
+from .schematic_parse import Schematic, Region
 
 
 def merge_dicts(values: dict, source: dict):
@@ -38,33 +38,35 @@ def localize(data: dict):
 class MaterialList:
     def __init__(self, data: Schematic):
         self.regions = data.regions
+        self.__out_cache = data.cache
 
-    def block_list(self, block_mode=False, waterlogged=True):
+    def block_list(self, block_mode=False, waterlogging=True):
         out = {}
         for i in self.regions.values():
-            out = merge_dicts(RegionMatList(i).block_list(block_mode, waterlogged), out)
+            out = merge_dicts(RegionMatList(i, self.__out_cache).block_list(block_mode, waterlogging), out)
 
         return out
 
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
         out = {}
         for i in self.regions.values():
-            out = merge_dicts(RegionMatList(i).item_list(tile_entities, entities, item_frames, armor_stands), out)
+            out = merge_dicts(
+                RegionMatList(i, self.__out_cache).item_list(tile_entities, entities, item_frames, armor_stands), out)
 
         return out
 
     def entity_list(self):
         out = {}
         for i in self.regions.values():
-            out = merge_dicts(RegionMatList(i).entity_list(), out)
+            out = merge_dicts(RegionMatList(i, self.__out_cache).entity_list(), out)
 
         return out
 
-    def totals_list(self, block_mode=False, waterlogged=True, tile_entities=True,
+    def totals_list(self, block_mode=False, waterlogging=True, tile_entities=True,
                     entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
         out = {}
         out = merge_dicts(self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration),
-                          self.block_list(block_mode, waterlogged))
+                          self.block_list(block_mode, waterlogging))
         out = merge_dicts(self.entity_list(), out)
 
         return out
@@ -74,13 +76,36 @@ class RegionMatList:
     __multi = re.compile(
         '(eggs)|(pickles)|(candles)')  # used in __block_state_handler() to match one of similar properties
 
-    def __init__(self, data: Region):
+    def __init__(self, data: Region, cache: str):
         self.region = data
         self.__options = {}
+        self.__options['rockets'] = True
+        self.__out_cache = cache
 
-    def block_list(self, block_mode=False, waterlogged=True):
+    def cache_read(self, datatype: str):
+        with open(self.__out_cache, 'r') as f:
+            data = json.load(f)
+        if 'material_lists' not in data: data['material_lists'] = {}
+        if f"{self.region.name}.{datatype}" in data['material_lists']:
+            return data['material_lists'][f"{self.region.name}.{datatype}"]
+        else:
+            return False
+
+    def cache_write(self, datatype: str, value: dict):
+        with open(self.__out_cache, 'r') as f:
+            data = json.load(f)
+        if 'material_lists' not in data: data['material_lists'] = {}
+        data['material_lists'][f"{self.region.name}.{datatype}"] = value
+        with open(self.__out_cache, 'w') as f:
+            json.dump(data, f, indent=2)
+
+    def block_list(self, block_mode=False, waterlogging=True):
         self.__options['block_mode'] = block_mode
-        self.__options['waterlog'] = waterlogged
+        self.__options['waterlog'] = waterlogging
+
+        in_cache = self.cache_read('blocks')
+        if in_cache:
+            return in_cache
 
         self.__cache_palette()  # apply configs to the region block state palette
         out = {}
@@ -91,20 +116,31 @@ class RegionMatList:
             if index not in self.__cache: continue
             out = merge_dicts(self.__cache[index], out)
 
+        self.cache_write('blocks', out)
         return out
 
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
         self.__options['rockets'] = rocket_duration
         self.__item_buffer = {}
 
+        in_cache = self.cache_read('items')
+        if in_cache:
+            return in_cache
+
         if tile_entities: self.__tile_entity_items()
         if entities: self.__entity_items()
         if item_frames: self.__item_frames()
         if armor_stands: self.__armor_stand_items()
 
+        self.cache_write('items', self.__item_buffer)
         return self.__item_buffer
 
     def entity_list(self):
+
+        in_cache = self.cache_read('entities')
+        if in_cache:
+            return in_cache
+
         out = {}
         for i in self.region.nbt['Entities']:
             if i['id'] == 'minecraft:item':
@@ -112,6 +148,7 @@ class RegionMatList:
             else:
                 out = merge_dicts({i['id']: 1}, out)
 
+        self.cache_write('entities', out)
         return out
 
     def __cache_palette(self):
@@ -169,7 +206,6 @@ class RegionMatList:
     def __block_handler(self):
         """
         Applies modifications from block_config.json
-        
         """
         if self.__name not in self.__block_buffer: return None
         if self.__name not in self.__block_configs: return None
