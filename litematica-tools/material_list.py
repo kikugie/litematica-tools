@@ -5,7 +5,7 @@ from .schematic_parse import Schematic, Region
 
 from mezmorize import Cache
 
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='../main/schematic_cache')
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='/schematic_cache')
 
 def merge_dicts(values: dict, source: dict):
     """
@@ -24,7 +24,7 @@ def sort(data: dict):
 
 
 def localize(data: dict):
-    with open(r'../main/config/name_references.json') as f:
+    with open(r'/config/name_references.json') as f:
         names = json.load(f)
 
     r = re.compile('.+Flight:\d+.+')
@@ -158,9 +158,9 @@ class RegionMatList:
 
         block_config.json - List of items matching the blocks.
         """
-        with open('../main/config/block_ignore.json', 'r') as f:
+        with open('/config/block_ignore.json', 'r') as f:
             self.__ignored_blocks = json.load(f)
-        with open('../main/config/block_config.json', 'r') as f:
+        with open('/config/block_config.json', 'r') as f:
             self.__block_configs = json.load(f)
 
     def __block_state_handler(self, var):
