@@ -1,11 +1,13 @@
 import json
 import os
 import re
+import tempfile
 
 from .schematic_parse import Schematic, Region
 from mezmorize import Cache
 
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='../main/schematic_cache')
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.tempdir, 'litematica_cache'))
+
 
 def dsort(data: dict):
     return {i: v for i, v in sorted(data.items(), key=lambda item: item[1], reverse=True)}
@@ -27,6 +29,7 @@ def localise(data: dict):
             names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
 
     return {names[i]: v for i, v in data.items()}
+
 
 class MaterialList:
     def __init__(self, data: Schematic):
@@ -64,6 +67,21 @@ class MaterialList:
         out += self.block_list(block_mode, waterlogging)
         out += self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration)
         out += self.entity_list()
+
+        return out.data
+
+    @cache.memoize()
+    def composite_list(self, blocks: bool, items: bool, entities: bool,
+                       block_mode=False, waterlogging=True, tile_entities=True,
+                       entity_items=True, item_frames=True, armor_stands=True, rocket_duration=True):
+        out = Counter()
+        if blocks:
+            out += self.block_list(block_mode, waterlogging)
+        if items:
+            out += self.item_list(tile_entities, entity_items, item_frames,
+                                                  armor_stands, rocket_duration)
+        if entities:
+            out += self.entity_list()
 
         return out.data
 

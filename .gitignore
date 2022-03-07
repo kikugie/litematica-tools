@@ -1,3 +1,7 @@
+.idea/
+cache/
+*.egg_info/
+
 venv/
 
 *.litematic
