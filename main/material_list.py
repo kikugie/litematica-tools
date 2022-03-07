@@ -2,21 +2,9 @@ import json
 import re
 
 from .schematic_parse import Schematic, Region
-
 from mezmorize import Cache
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='../main/schematic_cache')
-
-def merge_dicts(values: dict, source: dict):
-    """
-    Made to avoid adding values to not existing key
-    """
-    for i, v in values.items():
-        if i in source:
-            source[i] = source[i] + v
-        else:
-            source[i] = v
-    return source
 
 
 def sort(data: dict):
@@ -44,38 +32,38 @@ class MaterialList:
 
     @cache.memoize()
     def block_list(self, block_mode=False, waterlogging=True):
-        out = {}
+        out = Counter()
         for i in self.regions.values():
-            out = merge_dicts(RegionMatList(i).block_list(block_mode, waterlogging), out)
+            out += RegionMatList(i).block_list(block_mode, waterlogging)
 
-        return out
+        return out.data
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
-        out = {}
+        out = Counter()
         for i in self.regions.values():
-            out = merge_dicts(
-                RegionMatList(i).item_list(tile_entities, entities, item_frames, armor_stands), out)
+            out += RegionMatList(i).item_list(tile_entities, entities, item_frames, armor_stands)
 
-        return out
+        return out.data
 
     @cache.memoize()
     def entity_list(self):
-        out = {}
+        out = Counter()
         for i in self.regions.values():
-            out = merge_dicts(RegionMatList(i).entity_list(), out)
+            out += RegionMatList(i).entity_list()
 
-        return out
+        return out.data
 
     @cache.memoize()
     def totals_list(self, block_mode=False, waterlogging=True, tile_entities=True,
                     entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
-        out = {}
-        out = merge_dicts(self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration),
-                          self.block_list(block_mode, waterlogging))
-        out = merge_dicts(self.entity_list(), out)
+        out = Counter()
 
-        return out
+        out += self.block_list(block_mode, waterlogging)
+        out += self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration)
+        out += self.entity_list()
+
+        return out.data
 
 
 class RegionMatList:
@@ -97,41 +85,44 @@ class RegionMatList:
     @cache.memoize()
     def block_list(self, block_mode=False, waterlogging=True):
         self.__options['block_mode'] = block_mode
-        self.__options['waterlog'] = waterlogging
+        self.__options['waterlogging'] = waterlogging
 
         self.__cache_palette()  # apply configs to the region block state palette
-        out = {}
+        out = Counter()
 
         for entry in range(self.region.volume):
             index = self.region.get_block_state(entry)
-            if index == 0: continue
-            if index not in self.__cache: continue
-            out = merge_dicts(self.__cache[index], out)
+            if index == 0 or index not in self.__cache: continue
+            out += self.__cache[index]
 
-        return out
+        return out.data
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
         self.__options['rocket_duration'] = rocket_duration
-        self.__item_buffer = {}
+        out = Counter()
 
-        if tile_entities: self.__tile_entity_items()
-        if entities: self.__entity_items()
-        if item_frames: self.__item_frames()
-        if armor_stands: self.__armor_stand_items()
+        if tile_entities:
+            out += self.__tile_entity_items()
+        if entities:
+            out += self.__entity_items()
+        if item_frames:
+            out += self.__item_frames()
+        if armor_stands:
+            out += self.__armor_stand_items()
 
-        return self.__item_buffer
+        return out.data
 
     @cache.memoize()
     def entity_list(self):
-        out = {}
+        out = Counter()
         for i in self.region.nbt['Entities']:
             if i['id'] == 'minecraft:item':
-                out = merge_dicts(self.__get_items([i['Item']]), out)
+                out += self.__get_items([i['Item']])
             else:
-                out = merge_dicts({i['id']: 1}, out)
+                out += {i['id']: 1}
 
-        return out
+        return out.data
 
     def __cache_palette(self):
         """
@@ -177,7 +168,7 @@ class RegionMatList:
 
         if self.__options['block_mode']: return None  # prevents modifying counter when block mode is enabled
 
-        if self.__options['waterlog']:
+        if self.__options['waterlogging']:
             if ('waterlogged', 'true') in block_states.items():
                 self.__block_buffer['minecraft:water_bucket'] = 1
 
@@ -205,7 +196,7 @@ class RegionMatList:
         """
         Recursively searches for items in provided list.
         """
-        out = {}
+        out = Counter()
 
         for i in values:
             if not i: continue
@@ -217,35 +208,70 @@ class RegionMatList:
                     container = i['tag']
 
                 if 'Items' in container:
-                    out = merge_dicts(self.__get_items(container['Items']), out)
+                    out += self.__get_items(container['Items'])
 
                 if self.__options['rocket_duration']:
                     if (i['id'] == 'minecraft:firework_rocket') and 'Fireworks' in i['tag']:
                         tag = f"{{Fireworks:{{Flight:{i['tag']['Fireworks']['Flight']}}}}}"
-                        out = merge_dicts({f"{i['id']}{tag}": i['Count']}, out)
+                        out += {f"{i['id']}{tag}": i['Count']}
                         continue
-            out = merge_dicts({i['id']: i['Count']}, out)
+            out += {i['id']: i['Count']}
 
         return out
 
     def __tile_entity_items(self):
+        out = Counter()
         for i in self.region.nbt['TileEntities']:
             if 'Items' not in i: continue
-            self.__item_buffer = merge_dicts(self.__get_items(i['Items']), self.__item_buffer)
+            out += self.__get_items(i['Items'])
+        return out
 
     def __entity_items(self):
+        out = Counter()
         for i in self.region.nbt['Entities']:
             if 'Items' not in i: continue
-            self.__item_buffer = merge_dicts(self.__get_items(i['Items']), self.__item_buffer)
+            out += self.__get_items(i['Items'])
+        return out
 
     def __item_frames(self):
+        out = Counter()
         for i in self.region.nbt['Entities']:
             if i['id'] != ('minecraft:item_frame' or 'minecraft:glow_item_frame'): continue
             if 'Item' in i:
-                self.__item_buffer = merge_dicts(self.__get_items([i['Item']]), self.__item_buffer)
+                out += self.__get_items([i['Item']])
+        return out
 
     def __armor_stand_items(self):
+        out = Counter()
         for i in self.region.nbt['Entities']:
             if i['id'] != 'minecraft:armor_stand': continue
-            self.__item_buffer = merge_dicts(self.__get_items(i['ArmorItems'] + i['HandItems']),
-                                             self.__item_buffer)
+            out += self.__get_items(i['ArmorItems'] + i['HandItems'])
+        return out
+
+
+class Counter:
+    def __init__(self, values=None):
+        if values is None:
+            values = {}
+        self.data = values
+
+    def __merge(self, other):
+        d1 = self.data
+        if isinstance(other, Counter):
+            d2 = other.data
+        elif isinstance(other, dict):
+            d2 = other
+        else:
+            raise ValueError('Trying to merge non-dict type!')
+        for i, v in d2.items():
+            if i in d1:
+                d1[i] = d1[i] + v
+            else:
+                d1[i] = v
+        return Counter(d1)
+
+    def __add__(self, other):
+        return self.__merge(other)
+
+    def __iadd__(self, other):
+        return self.__merge(other)
