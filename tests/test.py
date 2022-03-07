@@ -1,38 +1,23 @@
-import json
-import litematicparse
+import time
 
-schem = litematicparse.Litematic('CCS_Raid_Full.litematic')
-schem.write_json('test.json')
+from main import Schematic, MaterialList
+from main.material_list import sort, localize
 
-#print(schem.block_count())
+x = {}
+times = []
+start = time.time()
+schem = Schematic('main_storage.litematic')
+print(f'File: {schem.file}')
+bmatl = localize(sort(MaterialList(schem).block_list()))
+imatl = localize(sort(MaterialList(schem).item_list()))
+ematl = localize(sort(MaterialList(schem).entity_list()))
+tmatl = localize(sort(MaterialList(schem).totals_list()))
+end = time.time()
+times.append(end - start)
 
-print(schem.regions)
+print(f'Blocks: {bmatl}')
+print(f'Items: {imatl}')
+print(f'Entities: {ematl}')
+print(f'Totals: {tmatl}')
 
-
-rg = 'Y:63, Chunk coords: 0, 0'
-
-#print(schem.regions[rg].get_block(0, 0, 1))
-print(schem.regions[rg].block_count())
-
-for i in schem.regions[rg].block_iterator():
-    print(i)
-#
-#
-# blocks = schem.regions[rg].block_count()
-# items = schem.regions[rg].inventory_count()
-# entities = schem.regions[rg].entity_count()
-# total = blocks + items + entities
-#
-# print(f"Blocks: {blocks.raw_counts}\n")
-# print(f"Items: {items.raw_counts}\n")
-# print(f"Entities: {entities.raw_counts}\n")
-# print(f"Total: {total.raw_counts}")
-#
-# with open(f'blocks.json', 'w') as f:
-#     json.dump(blocks.sorted_counts(), f, indent=2)
-# with open('items.json', 'w') as f:
-#     json.dump(items.sorted_counts(), f, indent=2)
-# with open('entities.json', 'w') as f:
-#     json.dump(entities.sorted_counts(), f, indent=2)
-# with open('total.json', 'w') as f:
-#     json.dump(total.sorted_counts(), f, indent=2)
+print(f'Total time: {sum(times) / len(times)} s')

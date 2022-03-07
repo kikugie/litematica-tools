@@ -2,3 +2,5 @@ venv/
 
 *.litematic
 tests/*.json
+/litematicparse/
+/tests/
