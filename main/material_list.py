@@ -2,11 +2,10 @@ import json
 import re
 
 from .schematic_parse import Schematic, Region
-from functools import lru_cache
 
 from mezmorize import Cache
 
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache')
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='../main/schematic_cache')
 
 def merge_dicts(values: dict, source: dict):
     """
@@ -113,7 +112,7 @@ class RegionMatList:
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
-        self.__options['rockets'] = rocket_duration
+        self.__options['rocket_duration'] = rocket_duration
         self.__item_buffer = {}
 
         if tile_entities: self.__tile_entity_items()
@@ -220,7 +219,7 @@ class RegionMatList:
                 if 'Items' in container:
                     out = merge_dicts(self.__get_items(container['Items']), out)
 
-                if self.__options['rockets']:
+                if self.__options['rocket_duration']:
                     if (i['id'] == 'minecraft:firework_rocket') and 'Fireworks' in i['tag']:
                         tag = f"{{Fireworks:{{Flight:{i['tag']['Fireworks']['Flight']}}}}}"
                         out = merge_dicts({f"{i['id']}{tag}": i['Count']}, out)

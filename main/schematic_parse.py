@@ -1,16 +1,18 @@
 import hashlib
-import json
 import re
-from os.path import exists
 
 import nbtlib as nbt
 
+from mezmorize import Cache
+
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache')
 
 def snake_case(text):
     return '_'.join([k.lower() for k in re.split('(?=[A-Z])\B', text)])
 
 
 class Schematic:
+
     def __init__(self, filepath: str):
         self.file = filepath
         self.file_format = self.get_file_format()
@@ -27,10 +29,7 @@ class Schematic:
 
             print(md5.hexdigest())
 
-            self.cache = f'../main/schematic_cache/{md5.hexdigest()}.json'
-            if not exists(self.cache):
-                with open(self.cache, 'w') as j:
-                    json.dump({'file': self.file}, j, indent=2)
+            self.hash = md5.hexdigest()
 
         self.metadata = self.get_metadata()
         self.data_version = self.nbt['MinecraftDataVersion']
