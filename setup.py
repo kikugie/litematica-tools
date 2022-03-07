@@ -10,7 +10,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'litematica = litematica-tools.scripts.cli:cli',
+            'litematica = litematica_tools.scripts.cli:cli',
         ],
     },
 )

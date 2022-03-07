@@ -1,4 +1,5 @@
 import json
+import os
 import re
 
 from .schematic_parse import Schematic, Region
@@ -6,6 +7,7 @@ from .schematic_parse import Schematic, Region
 from mezmorize import Cache
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='/schematic_cache')
+
 
 def merge_dicts(values: dict, source: dict):
     """
@@ -70,10 +72,24 @@ class MaterialList:
     @cache.memoize()
     def totals_list(self, block_mode=False, waterlogging=True, tile_entities=True,
                     entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
-        out = {}
         out = merge_dicts(self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration),
                           self.block_list(block_mode, waterlogging))
         out = merge_dicts(self.entity_list(), out)
+
+        return out
+
+    @cache.memoize()
+    def composite_list(self, blocks: bool, items: bool, entities: bool,
+                       block_mode=False, waterlogging=True, tile_entities=True,
+                       entity_items=True, item_frames=True, armor_stands=True, rocket_duration=True):
+        out = {}
+        if blocks:
+            out = merge_dicts(out, self.block_list(block_mode, waterlogging))
+        if items:
+            out = merge_dicts(out, self.item_list(tile_entities, entity_items, item_frames,
+                                                  armor_stands, rocket_duration))
+        if entities:
+            out = merge_dicts(out, self.entity_list())
 
         return out
 
@@ -158,9 +174,12 @@ class RegionMatList:
 
         block_config.json - List of items matching the blocks.
         """
-        with open('/config/block_ignore.json', 'r') as f:
+        source_location = os.path.dirname(os.path.abspath(__file__))
+        config_location = os.path.join(source_location, 'config')
+
+        with open(os.path.join(config_location, 'block_ignore.json'), 'r') as f:
             self.__ignored_blocks = json.load(f)
-        with open('/config/block_config.json', 'r') as f:
+        with open(os.path.join(config_location, 'block_config.json'), 'r') as f:
             self.__block_configs = json.load(f)
 
     def __block_state_handler(self, var):

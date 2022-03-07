@@ -27,8 +27,6 @@ class Schematic:
                 chunk = f.read(1024)
                 md5.update(chunk)
 
-            print(md5.hexdigest())
-
             self.hash = md5.hexdigest()
 
         self.metadata = self.get_metadata()
