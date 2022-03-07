@@ -1,12 +1,12 @@
 import time
 
-from main import Schematic, MaterialList
+from main import MaterialList, Schematic
 from main.material_list import sort, localize
 
 x = {}
 times = []
 start = time.time()
-schem = Schematic('main_storage.litematic')
+schem = Schematic('schematics/main_storage.litematic')
 print(f'File: {schem.file}')
 bmatl = localize(sort(MaterialList(schem).block_list()))
 imatl = localize(sort(MaterialList(schem).item_list()))
