@@ -1,29 +1,11 @@
 import json
+import os
 import re
 
 from .schematic_parse import Schematic, Region
 from mezmorize import Cache
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='../main/schematic_cache')
-
-
-def sort(data: dict):
-    return {i: v for i, v in sorted(data.items(), key=lambda item: item[1], reverse=True)}
-
-
-def localize(data: dict):
-    with open(r'../main/config/name_references.json') as f:
-        names = json.load(f)
-
-    r = re.compile('.+Flight:\d+.+')
-    rockets = list(filter(r.match, data))
-
-    if rockets:
-        for i in rockets:
-            duration = re.search('(?<=Flight:)\d+', i).group()
-            names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
-
-    return {names[i]: v for i, v in data.items()}
 
 
 class MaterialList:
@@ -36,7 +18,7 @@ class MaterialList:
         for i in self.regions.values():
             out += RegionMatList(i).block_list(block_mode, waterlogging)
 
-        return out.data
+        return out
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
@@ -44,7 +26,7 @@ class MaterialList:
         for i in self.regions.values():
             out += RegionMatList(i).item_list(tile_entities, entities, item_frames, armor_stands)
 
-        return out.data
+        return out
 
     @cache.memoize()
     def entity_list(self):
@@ -52,7 +34,7 @@ class MaterialList:
         for i in self.regions.values():
             out += RegionMatList(i).entity_list()
 
-        return out.data
+        return out
 
     @cache.memoize()
     def totals_list(self, block_mode=False, waterlogging=True, tile_entities=True,
@@ -63,7 +45,7 @@ class MaterialList:
         out += self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration)
         out += self.entity_list()
 
-        return out.data
+        return out
 
 
 class RegionMatList:
@@ -95,7 +77,7 @@ class RegionMatList:
             if index == 0 or index not in self.__cache: continue
             out += self.__cache[index]
 
-        return out.data
+        return out
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
@@ -111,7 +93,7 @@ class RegionMatList:
         if armor_stands:
             out += self.__armor_stand_items()
 
-        return out.data
+        return out
 
     @cache.memoize()
     def entity_list(self):
@@ -122,7 +104,7 @@ class RegionMatList:
             else:
                 out += {i['id']: 1}
 
-        return out.data
+        return out
 
     def __cache_palette(self):
         """
@@ -149,9 +131,12 @@ class RegionMatList:
 
         block_config.json - List of items matching the blocks.
         """
-        with open('../main/config/block_ignore.json', 'r') as f:
+        source_location = os.path.dirname(os.path.abspath(__file__))
+        config_location = os.path.join(source_location, 'config')
+
+        with open(os.path.join(config_location, 'block_ignore.json'), 'r') as f:
             self.__ignored_blocks = json.load(f)
-        with open('../main/config/block_config.json', 'r') as f:
+        with open(os.path.join(config_location, 'block_config.json'), 'r') as f:
             self.__block_configs = json.load(f)
 
     def __block_state_handler(self, var):
@@ -269,6 +254,26 @@ class Counter:
             else:
                 d1[i] = v
         return Counter(d1)
+
+    def csort(self):
+        return Counter({i: v for i, v in sorted(self.data.items(), key=lambda item: item[1], reverse=True)})
+
+    def localise(self):
+        source_location = os.path.dirname(os.path.abspath(__file__))
+        config_location = os.path.join(source_location, 'config')
+
+        with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
+            names = json.load(f)
+
+        r = re.compile('.+Flight:\d+.+')
+        rockets = list(filter(r.match, self.data))
+
+        if rockets:
+            for i in rockets:
+                duration = re.search('(?<=Flight:)\d+', i).group()
+                names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
+
+        return Counter({names[i]: v for i, v in self.data.items()})
 
     def __add__(self, other):
         return self.__merge(other)
