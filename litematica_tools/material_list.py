@@ -1,12 +1,13 @@
 import json
 import os
 import re
+import tempfile
 
 from .schematic_parse import Schematic, Region
 
 from mezmorize import Cache
 
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='/schematic_cache')
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.tempdir, 'litematica_cache'))
 
 
 def merge_dicts(values: dict, source: dict):
