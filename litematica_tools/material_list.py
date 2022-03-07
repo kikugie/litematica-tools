@@ -6,7 +6,7 @@ import tempfile
 from .schematic_parse import Schematic, Region
 from mezmorize import Cache
 
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.tempdir, 'litematica_cache'))
+cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.gettempdir(), 'litematica_cache'))
 
 
 def dsort(data: dict):

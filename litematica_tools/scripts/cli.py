@@ -3,7 +3,7 @@ import io
 import json
 
 from click import command, group, echo, option, argument, Choice
-from ..material_list import MaterialList, sort, localize, merge_dicts
+from ..material_list import MaterialList
 from ..schematic_parse import Schematic
 
 
