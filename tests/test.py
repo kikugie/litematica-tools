@@ -1,12 +1,12 @@
 import time
 
-from main import MaterialList, Schematic
-from main.material_list import localise, dsort
+from litematica_tools import MaterialList, NBT_File
+from litematica_tools.material_list import localise, dsort
 
 x = {}
 times = []
 start = time.time()
-schem = Schematic('schematics/main_storage.litematic')
+schem = NBT_File('schematics/test1.schem')
 print(f'File: {schem.file}')
 bmatl = localise(dsort(MaterialList(schem).block_list()))
 imatl = localise(dsort(MaterialList(schem).item_list()))

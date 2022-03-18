@@ -1,9 +1,8 @@
 import json
 import os
-import re
 import tempfile
 
-from .schematic_parse import Schematic, Region
+from .schematic_parse import *
 from mezmorize import Cache
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.gettempdir(), 'litematica_cache'))
@@ -32,8 +31,8 @@ def localise(data: dict):
 
 
 class MaterialList:
-    def __init__(self, data: Schematic):
-        self.regions = data.regions
+    def __init__(self, nbt: NBT_File):
+        self.regions = nbt.data.regions
 
     @cache.memoize()
     def block_list(self, block_mode=False, waterlogging=True):
@@ -41,7 +40,7 @@ class MaterialList:
         for i in self.regions.values():
             out += RegionMatList(i).block_list(block_mode, waterlogging)
 
-        return out.data
+        return out
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
@@ -49,7 +48,7 @@ class MaterialList:
         for i in self.regions.values():
             out += RegionMatList(i).item_list(tile_entities, entities, item_frames, armor_stands)
 
-        return out.data
+        return out
 
     @cache.memoize()
     def entity_list(self):
@@ -57,7 +56,7 @@ class MaterialList:
         for i in self.regions.values():
             out += RegionMatList(i).entity_list()
 
-        return out.data
+        return out
 
     @cache.memoize()
     def totals_list(self, block_mode=False, waterlogging=True, tile_entities=True,
@@ -68,7 +67,7 @@ class MaterialList:
         out += self.item_list(tile_entities, entities, item_frames, armor_stands, rocket_duration)
         out += self.entity_list()
 
-        return out.data
+        return out
 
     @cache.memoize()
     def composite_list(self, blocks: bool, items: bool, entities: bool,
@@ -83,14 +82,14 @@ class MaterialList:
         if entities:
             out += self.entity_list()
 
-        return out.data
+        return out
 
 
 class RegionMatList:
     __multi = re.compile(
         '(eggs)|(pickles)|(candles)')  # used in __block_state_handler() to match one of similar properties
 
-    def __init__(self, data: Region):
+    def __init__(self, data):
         self.region = data
         self.__options = {
             'block_mode': False,
@@ -112,10 +111,10 @@ class RegionMatList:
 
         for entry in range(self.region.volume):
             index = self.region.get_block_state(entry)
-            if index == 0 or index not in self.__cache: continue
+            if index not in self.__cache: continue
             out += self.__cache[index]
 
-        return out.data
+        return out
 
     @cache.memoize()
     def item_list(self, tile_entities=True, entities=True, item_frames=True, armor_stands=True, rocket_duration=True):
@@ -131,18 +130,18 @@ class RegionMatList:
         if armor_stands:
             out += self.__armor_stand_items()
 
-        return out.data
+        return out
 
     @cache.memoize()
     def entity_list(self):
         out = Counter()
-        for i in self.region.nbt['Entities']:
+        for i in self.region.entities:
             if i['id'] == 'minecraft:item':
                 out += self.__get_items([i['Item']])
             else:
                 out += {i['id']: 1}
 
-        return out.data
+        return out
 
     def __cache_palette(self):
         """
@@ -151,7 +150,7 @@ class RegionMatList:
         self.__load_config()
 
         self.__cache = {}
-        for i, v in enumerate(self.region.nbt['BlockStatePalette']):
+        for i, v in enumerate(self.region.block_state_palette):
             self.__name = v['Name']
 
             if self.__name in self.__ignored_blocks: continue
@@ -244,21 +243,21 @@ class RegionMatList:
 
     def __tile_entity_items(self):
         out = Counter()
-        for i in self.region.nbt['TileEntities']:
+        for i in self.region.tile_entities:
             if 'Items' not in i: continue
             out += self.__get_items(i['Items'])
         return out
 
     def __entity_items(self):
         out = Counter()
-        for i in self.region.nbt['Entities']:
+        for i in self.region.entities:
             if 'Items' not in i: continue
             out += self.__get_items(i['Items'])
         return out
 
     def __item_frames(self):
         out = Counter()
-        for i in self.region.nbt['Entities']:
+        for i in self.region.entities:
             if i['id'] != ('minecraft:item_frame' or 'minecraft:glow_item_frame'): continue
             if 'Item' in i:
                 out += self.__get_items([i['Item']])
@@ -266,32 +265,24 @@ class RegionMatList:
 
     def __armor_stand_items(self):
         out = Counter()
-        for i in self.region.nbt['Entities']:
+        for i in self.region.entities:
             if i['id'] != 'minecraft:armor_stand': continue
             out += self.__get_items(i['ArmorItems'] + i['HandItems'])
         return out
 
 
-class Counter:
-    def __init__(self, values=None):
-        if values is None:
-            values = {}
-        self.data = values
+class Counter(dict):
+    def __init__(self, *args, **kw):
+        super(Counter, self).__init__(*args, **kw)
 
     def __merge(self, other):
-        d1 = self.data
-        if isinstance(other, Counter):
-            d2 = other.data
-        elif isinstance(other, dict):
-            d2 = other
-        else:
-            raise ValueError('Trying to merge non-dict type!')
-        for i, v in d2.items():
-            if i in d1:
-                d1[i] = d1[i] + v
+        out = self
+        for i, v in other.items():
+            if i in out:
+                out[i] = out[i] + v
             else:
-                d1[i] = v
-        return Counter(d1)
+                out[i] = v
+        return out
 
     def __add__(self, other):
         return self.__merge(other)
