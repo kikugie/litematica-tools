@@ -1,8 +1,9 @@
 import json
 import os
 import tempfile
+import re
 
-from .schematic_parse import *
+from .schematic_parse import NBT_File
 from mezmorize import Cache
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.gettempdir(), 'litematica_cache'))
