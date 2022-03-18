@@ -1,5 +1,6 @@
 # litematica-tools
-Python scripts for doing stuff with litematica files
+Python scripts for doing stuff with litematica files.
+But currently only making advanced material lists.
 
 Usage:
 - Download and use `pip install .`, not on pip yet
