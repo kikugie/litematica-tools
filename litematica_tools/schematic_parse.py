@@ -5,6 +5,7 @@ from hashlib import md5
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache')
 
+
 class NBT_File:
     def __init__(self, filepath):
         self.file = filepath
@@ -14,13 +15,15 @@ class NBT_File:
 
         self.file_format = re.search('((?!\.)[^.]+)$', filepath).group()
         self.data = {}
+        name = self.file.replace(' ', '_')
+        name = re.search('\w+(?=\.\w+$)', name).group()
         match self.file_format:
             case 'litematic':
                 self.data = Litematic(self.raw_nbt)
             case 'schem':
-                name = self.file.replace(' ', '_')
-                name = re.search('\w+(?=\.schem$)', name).group()
                 self.data = Schem(self.raw_nbt, name)
+            case 'nbt':
+                self.data = NBT(self.raw_nbt, name)
             case _:
                 raise ValueError('Unsupported file format')
 
@@ -42,7 +45,13 @@ class Litematic(Structure):
 class Schem(Structure):
     def __init__(self, nbt: dict, name):
         super().__init__(nbt)
-        self.regions[name] = SchemRegion(name, nbt)  # actual name later
+        self.regions[name] = SchemRegion(name, nbt)
+
+
+class NBT(Structure):
+    def __init__(self, nbt: dict, name):
+        super().__init__(nbt)
+        self.regions[name] = NBTRegion(name, nbt)
 
 
 class Region:
@@ -111,3 +120,35 @@ class SchemRegion(Region):
 
     def get_block_state(self, index):
         return self.block_states[index]
+
+
+class NBTRegion(Region):
+    def __init__(self, i, v):
+        super().__init__(i)
+        self.block_state_palette = v['palette']
+        self.block_states = v['blocks']
+        self.tile_entities = self.__get_tile_entities(self.block_states)
+        self.entities = self.__get_entities(v['entities'])
+        # pretty much a bodge for material list to work,
+        # but to make it work properly need to rework much more
+        # so later
+        self.volume = abs(v['size'][0] * v['size'][1] * v['size'][2])
+        self.bit_span = int.bit_length(len(self.block_state_palette) - 1)
+
+    @staticmethod
+    def __get_tile_entities(blocks):
+        out = []
+        for i in blocks:
+            if 'nbt' in i:
+                out.append(i['nbt'])
+        return out
+
+    @staticmethod
+    def __get_entities(entities):
+        out = []
+        for i in entities:
+            out.append(i['nbt'])
+        return out
+
+    def get_block_state(self, index):
+        return self.block_states[index]['state']

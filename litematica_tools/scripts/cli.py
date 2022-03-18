@@ -3,8 +3,8 @@ import io
 import json
 
 from click import command, group, echo, option, argument, Choice
-from ..material_list import MaterialList
-from ..schematic_parse import Schematic
+from ..material_list import MaterialList, dsort
+from ..schematic_parse import NBT_File
 
 
 item_name = "Item"
@@ -35,7 +35,7 @@ def list_schem(file, blocks, inventories, entities, formatting):
     if not (blocks or inventories or entities):
         blocks = True
 
-    mat_list = MaterialList(Schematic(file)).composite_list(blocks, inventories, entities)
+    mat_list = dsort(MaterialList(NBT_File(file)).composite_list(blocks, inventories, entities))
 
     echo(format_list(mat_list, formatting))
 

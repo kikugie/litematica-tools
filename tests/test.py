@@ -6,7 +6,7 @@ from litematica_tools.material_list import localise, dsort
 x = {}
 times = []
 start = time.time()
-schem = NBT_File('schematics/test1.schem')
+schem = NBT_File('schematics/test.nbt')
 print(f'File: {schem.file}')
 bmatl = localise(dsort(MaterialList(schem).block_list()))
 imatl = localise(dsort(MaterialList(schem).item_list()))
