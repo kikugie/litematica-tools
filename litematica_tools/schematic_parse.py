@@ -1,9 +1,6 @@
 import re
 import nbtlib as nbt
-from mezmorize import Cache
 from hashlib import md5
-
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR='cache')
 
 
 class NBT_File:
