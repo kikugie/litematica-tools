@@ -2,6 +2,8 @@ import re
 import numpy as np
 
 from nbtlib import File
+from dataclasses import dataclass, field
+from collections import namedtuple
 
 
 class NBTFile:
@@ -12,94 +14,95 @@ class NBTFile:
             self.raw_nbt = File.load(f, gzipped=True).unpack()
 
         self.file_format = re.search(r'\w+$', filepath).group()
+
         self.data = Litematic(nbt=self.raw_nbt, lazy=lazy)
 
 
+Vector = namedtuple('Vector', ['x', 'y', 'z'])
+
+
+@dataclass()
 class Metadata:
-    def __init__(self):
-        self.name = None
-        self.author = None
-        self.size = None
-        self.data_version = None
+    name: str = field(default=None)
+    description: str = field(default=None)
+    author: str = field(default=None)
+    size: Vector = field(default=None)
+    region_count: int = field(default=None)
+    time_created: int = field(default=None)
+    time_modified: int = field(default=None)
+    total_blocks: int = field(default=None)
+    total_volume: int = field(default=None)
 
 
+@dataclass()
 class Region:
-    def __init__(self):
-        self.shift = None
-        self.nbt = None
-        self.palette = None  # list of BlockState objects
-        self.block_states = None
-        self.block_states_data_type = None
-        self.entities = None
-        self.tile_entities = None
-        self.position = None
-        self.size = None
-        self.volume = None
-        self.bit_span = None
+    # block state data
+    palette: list = field(default=None)
+    block_states: list = field(default=None)
+    block_states_data_type: str = field(default=None)
+
+    shift: int = field(default=None)
+    bit_span: int = field(default=None)
+
+    # entities
+    tile_entities: list = field(default=None)
+    entities: list = field(default=None)
+
+    # other
+    nbt: dict = field(default=None)
+    position: Vector = field(default=None)
+    size: Vector = field(default=None)
+    volume: int = field(default=None)
 
 
+@dataclass()
 class BlockState:
-    def __init__(self):
-        self.name = None
-        self.properties = {}
+    name: str = field(default=None)
+    properties: dict = field(default=None)
 
 
+@dataclass()
 class TileEntity:
-    def __init__(self):
-        self.id = None
-        self.position = None
-        self.inventory = []
+    id: str = field(default=None)
+    position: Vector = field(default=None)
+    inventory: list = field(default=None)
 
 
+@dataclass()
 class Item:
-    instances = []
-
-    def __init__(self):
-        self.id = None
-        self.count = None
-        self.slot = None
-        self.inventory = []  # list of Item()
-        self.origin: list | None = None
-
-    def list_instance(self):
-        if self.instances is None:
-            self.instances = {
-                'tile_entity': [],
-                'entity': []
-            }
-        self.instances[self.origin[0]].append(self)
-
-    def __repr__(self):
-        return f'(id: {self.id}, count: {self.count}, slot: {self.slot})'
+    id: str = field(default=None)
+    count: int = field(default=None)
+    slot: int = field(default=None)
+    inventory: list = field(default=None)
+    origin: list = field(default=None)
 
 
+@dataclass()
 class Entity:
-    def __init__(self):
-        self.id = None
-        self.inventory = []
-        self.position = None
+    id: str = field(default=None)
+    position: Vector = field(default=None)
+    inventory: list = field(default=None)
 
 
 class Litematic:
-    def __init__(self, nbt=None, lazy=True):
-        self.__lazy = lazy
+    def __init__(self, nbt=None, *, lazy=True):
+        self.__lazy_mode = lazy
         if nbt is not None:
             self.__get_metadata(nbt)
             self.__get_regions(nbt)
 
     def __get_metadata(self, nbt):
-        self.metadata = Metadata
-        self.metadata.size = tuple(i for i in nbt['Metadata']['EnclosingSize'])
-        self.metadata.author = nbt['Metadata']['Author']
-        self.metadata.name = nbt['Metadata']['Name']
-        self.metadata.data_version = nbt['MinecraftDataVersion']
+        sz = tuple(i for i in nbt['Metadata']['EnclosingSize'])
+        self.metadata = Metadata(size=Vector(sz[0], sz[1], sz[2]),
+                                 author=nbt['Metadata']['Author'],
+                                 name=nbt['Metadata']['Name'])
 
     def __get_regions(self, nbt):
         self.regions = {}  # name: Region
         for i, v in nbt['Regions'].items():
             temp = Region()
             temp.nbt = v
-            if not self.__lazy:
+            if not self.__lazy_mode:
                 self.set_block_data(temp)
                 self.set_tile_entities(temp)
                 self.set_entities(temp)
@@ -125,10 +128,8 @@ class Litematic:
     def __get_palette(region: Region) -> list:
         out = []
         for i in region.nbt['BlockStatePalette']:
-            temp = BlockState()
-            temp.name = i['Name']
-            if 'Properties' in i:
-                temp.properties = i['Properties']
+            temp = BlockState(name=i['Name'],
+                              properties=i['Properties'] if 'Properties' in i else None)
             out.append(temp)
         return out
 
@@ -136,12 +137,10 @@ class Litematic:
         te_nbt = region.nbt['TileEntities']
         out = []
         for i in te_nbt:
-            temp = TileEntity()
-            temp.position = (i['x'], i['y'], i['z'])
+            temp = TileEntity(position=Vector(i['x'], i['y'], i['z']),
+                              inventory=self.__get_items(i),
+                              id='#UNKNOWN')
             # temp.id = region.nbt['BlockStatePalette'][self.get_block_state(region, self.get_index(region, temp.position))]['Name']
-            temp.id = 'some_block'
-            temp.inventory = self.__get_items(i, ('tile_entity', temp.id))
-
             out.append(temp)
         return out
 
@@ -149,15 +148,14 @@ class Litematic:
         ent = region.nbt['Entities']
         out = []
         for i in ent:
-            temp = Entity()
-            temp.id = i['id']
-            temp.position = tuple(j for j in i['Pos'])
-            temp.inventory = self.__get_items(i, ('entity', temp.id))
-
+            pos = tuple(j for j in i['Pos'])
+            temp = Entity(id=i['id'],
+                          position=Vector(pos[0], pos[1], pos[2]),
+                          inventory=self.__get_items(i))
             out.append(temp)
         return out
 
-    def __get_items(self, inv, origin: tuple = None) -> list:
+    def __get_items(self, inv) -> list:
         out = []
 
         def yoink(item):
@@ -170,9 +168,7 @@ class Litematic:
                 dr = item['tag']
                 if 'BlockEntityTag' in dr:
                     dr = dr['BlockEntityTag']
-                temp.inventory = self.__get_items(dr, origin)
-            temp.origin = origin
-            temp.list_instance()
+                temp.inventory = self.__get_items(dr)
             return temp
 
         if 'Items' in inv:
