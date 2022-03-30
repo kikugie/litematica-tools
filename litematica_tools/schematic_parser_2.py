@@ -1,5 +1,4 @@
 import re
-import numpy as np
 
 from nbtlib import File
 from dataclasses import dataclass, field
@@ -7,7 +6,14 @@ from collections import namedtuple
 
 
 class NBTFile:
-    def __init__(self, filepath, lazy=True):
+    def __init__(self, filepath, *, lazy=False):
+        """
+        Opens the NBT file and writes its data to a python values.
+
+        :param filepath: Path to the desired file.
+        :param lazy: Optional parameter for decoding nbt.
+                     Reduces the decoded information, decreasing object creation time.
+        """
         self.file = filepath
 
         with open(filepath, 'rb') as f:
@@ -68,6 +74,10 @@ class TileEntity:
     inventory: list = field(default=None)
 
 
+class ItemList:
+    instances = []
+
+
 @dataclass()
 class Item:
     id: str = field(default=None)
@@ -75,6 +85,9 @@ class Item:
     slot: int = field(default=None)
     inventory: list = field(default=None)
     origin: list = field(default=None)
+
+    def list_instance(self):
+        ItemList.instances.append(self)
 
 
 @dataclass()
@@ -85,19 +98,41 @@ class Entity:
 
 
 class Litematic:
-    def __init__(self, nbt=None, *, lazy=True):
-        self.__lazy_mode = lazy
+    def __init__(self, nbt=None, *, lazy=False):
+        """
+        :param nbt: Litematic NBT data converted to dict.
+                    If not provided creates empty class.
+        :param lazy: Optional parameter for decoding nbt.
+                     Reduces the decoded information, decreasing object creation time.
+        """
         if nbt is not None:
+            self.__lazy_mode = lazy
             self.__get_metadata(nbt)
             self.__get_regions(nbt)
 
     def __get_metadata(self, nbt):
-        sz = tuple(i for i in nbt['Metadata']['EnclosingSize'])
-        self.metadata = Metadata(size=Vector(sz[0], sz[1], sz[2]),
-                                 author=nbt['Metadata']['Author'],
-                                 name=nbt['Metadata']['Name'])
+        """
+        Creates metadata for the Litematic.
 
-    def __get_regions(self, nbt):
+        :param nbt: Litematic NBT data converted to dict.
+        """
+        sz = nbt['Metadata']['EnclosingSize']
+        self.metadata = Metadata(size=Vector(sz['x'], sz['y'], sz['z']),
+                                 author=nbt['Metadata']['Author'],
+                                 name=nbt['Metadata']['Name'],
+                                 description=nbt['Metadata']['Description'],
+                                 region_count=nbt['Metadata']['RegionCount'],
+                                 time_created=nbt['Metadata']['TimeCreated'],
+                                 time_modified=nbt['Metadata']['TimeModified'],
+                                 total_blocks=nbt['Metadata']['TotalBlocks'],
+                                 total_volume=nbt['Metadata']['TotalVolume'])
+
+    def __get_regions(self, nbt: dict):
+        """
+        Creates Region objects from nbt dict
+
+        :param nbt: Region NBT data converted to dict.
+        """
         self.regions = {}  # name: Region
         for i, v in nbt['Regions'].items():
             temp = Region()
@@ -110,6 +145,12 @@ class Litematic:
             self.regions[i] = temp
 
     def set_block_data(self, region: Region):
+        """
+        Updates region attributes for block data from nbt dict.
+        Should be used manually if lazy_mode is enabled.
+
+        :param region: Region object to use data from.
+        """
         region.size = tuple(j for j in region.nbt['Size'].values())
         region.block_states = region.nbt['BlockStates']
         region.block_states_data_type = 'litematic'
@@ -119,13 +160,32 @@ class Litematic:
         region.shift = (1 << region.bit_span) - 1
 
     def set_tile_entities(self, region: Region):
+        """
+        Updates region attributes for tile_entity data from nbt dict.
+        Should be used manually if lazy_mode is enabled.
+
+        :param region: Region object to use data from.
+        """
         region.tile_entities = self.__get_tile_entities(region)
 
     def set_entities(self, region: Region):
+        """
+        Updates region attributes for entity data from nbt dict.
+        Should be used manually if lazy_mode is enabled.
+
+        :param region: Region object to use data from.
+        """
+
         region.entities = self.__get_entities(region)
 
     @staticmethod
     def __get_palette(region: Region) -> list:
+        """
+        Converts 'BlockState' values of nbt list into more accessible format.
+
+        :param region: Region object to use data from.
+        :return: List of BlockState objects.
+        """
         out = []
         for i in region.nbt['BlockStatePalette']:
             temp = BlockState(name=i['Name'],
@@ -134,41 +194,61 @@ class Litematic:
         return out
 
     def __get_tile_entities(self, region: Region) -> list:
+        """
+        :param region: Region object to use data from.
+        :return: List of TileEntity objects.
+        """
         te_nbt = region.nbt['TileEntities']
         out = []
         for i in te_nbt:
-            temp = TileEntity(position=Vector(i['x'], i['y'], i['z']),
-                              inventory=self.__get_items(i),
-                              id='#UNKNOWN')
-            # temp.id = region.nbt['BlockStatePalette'][self.get_block_state(region, self.get_index(region, temp.position))]['Name']
+            temp = TileEntity()
+            temp.position = Vector(i['x'], i['y'], i['z'])
+            temp.id = region.nbt['BlockStatePalette'][
+                self.get_block_state(region, self.get_index(region, temp.position))]['Name']
+            temp.inventory = self.__get_items(i, container=[temp, temp.id])
             out.append(temp)
         return out
 
     def __get_entities(self, region: Region) -> list:
+        """
+        :param region: Region object to use data from.
+        :return: List of Entity objects.
+        """
         ent = region.nbt['Entities']
         out = []
         for i in ent:
             pos = tuple(j for j in i['Pos'])
             temp = Entity(id=i['id'],
-                          position=Vector(pos[0], pos[1], pos[2]),
-                          inventory=self.__get_items(i))
+                          position=Vector(pos[0], pos[1], pos[2]))
+            temp.inventory = self.__get_items(i, container=[temp, i['id']])
             out.append(temp)
         return out
 
-    def __get_items(self, inv) -> list:
+    def __get_items(self, inv: dict, *, container: list = None) -> list:
+        """
+        Used for extracting items from inventories recursively.
+        For general use get_items. (Not yet)
+
+        :param inv: Inventory dict to look for items in.
+                    Usually entries in TileEntities or Entities
+        :param container: Optional param for defining path of the item.
+        :return: List of Item objects.
+        """
         out = []
 
         def yoink(item):
-            temp = Item()
-            temp.id = item['id']
-            temp.count = item['Count']
-            if 'Slot' in item:
-                temp.slot = item['Slot']
+            temp = Item(id=item['id'],
+                        count=item['Count'],
+                        slot=item['Slot'] if 'Slot' in item else None)
+            if container is not None:
+                temp.origin = container + [item['id']]
+
             if 'tag' in item:
-                dr = item['tag']
-                if 'BlockEntityTag' in dr:
-                    dr = dr['BlockEntityTag']
-                temp.inventory = self.__get_items(dr)
+                nd = item['tag']
+                if 'BlockEntityTag' in nd:
+                    nd = nd['BlockEntityTag']
+                temp.inventory = self.__get_items(nd, container=temp.origin)
+            temp.list_instance()
             return temp
 
         if 'Items' in inv:
@@ -181,48 +261,81 @@ class Litematic:
         return out
 
     @staticmethod
-    def get_index(region: Region, *coords: list | tuple) -> int:
+    def get_index(region: Region, coords: list | tuple | Vector) -> int:
+        """
+        :param region: Region object to use data from.
+        :param coords: XYZ values as list, tuple or Vector.
+                       Values at index > 2 will be ignored.
+        :return: Index of corresponding entry in block_states.
+                (Likely will be put as index param in the get_block_state)
+        """
         return coords[1] * region.size[0] * region.size[1] + coords[2] * region.size[0] + coords[0]
 
     @staticmethod
     def get_block_state(region: Region, index: int) -> int:
-
+        """
+        :param region: Region object to use data from.
+        :param index: Index of an entry in block_states.
+        :return: Index of corresponding entry in the palette.
+        """
         start_offset = index * region.bit_span
         start_array = start_offset >> 6
         start_bit_offset = start_offset & 0x3F
         entry_end = start_offset % 64 + region.bit_span
 
-        if entry_end < 64:
-            out = np.right_shift(region.block_states[start_array], np.bitwise_and(start_bit_offset, region.shift))
-        else:
-            end_offset = 64 - start_bit_offset
-            end_array = ((index + 1) * region.bit_span - 1) >> 6
-            out = (abs(region.block_states[start_array] >> start_bit_offset) | region.block_states[
-                end_array] << end_offset) & region.shift
+        try:
+            if entry_end < 64:
+                out = region.block_states[start_array] >> start_bit_offset & region.shift
+            else:
+                end_offset = 64 - start_bit_offset
+                end_array = ((index + 1) * region.bit_span - 1) >> 6
+                out = (abs(region.block_states[start_array] >> start_bit_offset) | region.block_states[
+                    end_array] << end_offset) & region.shift
+        except IndexError:
+            raise BlockOutOfBounds(index)
+
         return out
 
-        # def calculations(index, bit_span, block_states):
-        #     start_offset = index * bit_span
-        #     start_arr_index = start_offset >> 6
-        #     end_arr_index = ((index + 1) * bit_span - 1) >> 6
-        #     start_bit_offset = start_offset & 0x3F
-        #     shift = (1 << bit_span) - 1
-        #
-        #     if start_arr_index == end_arr_index:
-        #         out = block_states[start_arr_index] >> start_bit_offset & shift
-        #     else:
-        #         end_offset = 64 - start_bit_offset
-        #         out = (abs(block_states[start_arr_index] >> start_bit_offset) | block_states[
-        #             end_arr_index] << end_offset) & shift
-        #     return out
-        #
-        # return calculations(ind, region.bit_span, region.block_states)
+    @staticmethod
+    def block_iterator(region: Region, *, scan_range: range = None) -> int:
+        """
+        :param region: Region object to use data from.
+        :param scan_range: Optional custom range. By default equals to region volume.
+        :return: Index of corresponding entry in the palette.
+        """
+        if scan_range is None:
+            scan_range = range(region.volume)
+        elif scan_range[0] < 0 or scan_range[-1] > region.volume:
+            raise BlockOutOfBounds(f'({scan_range[0]}, {scan_range[-1]})')
+
+        start_offset = scan_range[0] * region.bit_span
+        start_array = start_offset >> 6
+        start_bit_offset = start_offset & 0x3F
+        entry_end = start_offset % 64 + region.bit_span
+
+        for i in scan_range:
+            if entry_end < 64:
+                out = region.block_states[start_array] >> start_bit_offset & region.shift
+            else:
+                end_offset = 64 - start_bit_offset
+                end_array = ((i + 1) * region.bit_span - 1) >> 6
+                out = (abs(region.block_states[start_array] >> start_bit_offset) | region.block_states[
+                    end_array] << end_offset) & region.shift
+
+                start_array += 1
+                entry_end -= 64
+
+            start_offset += region.bit_span
+            start_bit_offset = start_offset & 0x3F
+            entry_end += region.bit_span
+
+            yield out
 
 
 class BlockOutOfBounds(Exception):
-    def __init__(self, index):
-        self.index = index
-        super.__init__(self.index)
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
     def __str__(self):
-        return f'Trying to get block outside the enclosing box at index {self.index}!'
+        return f'Trying to get block outside the enclosing box at {self.message}!'
