@@ -1,11 +1,37 @@
 import time
 import timeit
 
-from litematica_tools import MaterialList, NBT_File
-from litematica_tools.material_list import localise, dsort
+from litematica_tools import *
 
-def matl():
-    schem = NBT_File('schematics/main_storage.litematic')
-    return MaterialList(schem).block_list()
+def L_matl():
+    schem = NBTFile('schematics/sample.litematic')
+    matl = MaterialList(schem).block_list()
+    print(matl)
+    # matl = MaterialList(schem).item_list()
+    # print(matl)
+    # matl = MaterialList(schem).entity_list()
+    # print(matl)
 
-print(timeit.timeit(matl, number=1))
+
+def S_matl():
+    schem = NBTFile('schematics/sample.schem')
+    matl = MaterialList(schem).block_list()
+    print(matl)
+    # matl = MaterialList(schem).item_list()
+    # print(matl)
+    # matl = MaterialList(schem).entity_list()
+    # print(matl)
+
+def N_matl():
+    schem = NBTFile('schematics/sample.nbt')
+    matl = MaterialList(schem).block_list()
+    print(matl)
+    # matl = MaterialList(schem).item_list()
+    # print(matl)
+    # matl = MaterialList(schem).entity_list()
+    # print(matl)
+
+
+print(timeit.timeit(L_matl, number=1))
+print(timeit.timeit(S_matl, number=1))
+print(timeit.timeit(N_matl, number=1))
