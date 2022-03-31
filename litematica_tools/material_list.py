@@ -12,6 +12,10 @@ cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.gettempdi
 
 
 class Counter(dict):
+    """
+    Extended dict class.
+    Supports safely adding to values and dict sorting.
+    """
     def __init__(self, *args, **kw):
         super(Counter, self).__init__(*args, **kw)
 
@@ -33,8 +37,45 @@ class Counter(dict):
     def dsort(self, reverse=True):
         return Counter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
 
+    @staticmethod
+    def localise(data: dict) -> dict:
+        """
+        Converts minecraft ids to names.
+        Names are configured in 'config/name_references.json'.
+
+        :param data: Dict of {'minecraft:<namespace id>': <amount>, ...}
+        :return: Dict of {'<Name>': <amount>, ...}
+        """
+        source_location = os.path.dirname(os.path.abspath(__file__))
+        config_location = os.path.join(source_location, 'config')
+
+        with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
+            names = json.load(f)
+
+        # NOT IMPLEMENTED
+        # r = re.compile(r'.+Flight:\d+.+')
+        # rockets = list(filter(r.match, data))
+        #
+        # if rockets:
+        #     for i in rockets:
+        #         duration = re.search(r'(?<=Flight:)\d+', i).group()
+        #         names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
+
+        return {names[i]: v for i, v in data.items()}
+
 
 class MaterialList:
+    """
+    Creates advanced material lists from schematic files.
+    Uses data parsed by schematic_parse.py.
+
+    Simple usage:
+    from litematica_tools import *
+
+    schem = NBTFile('sample.litematic')
+    mat_list = MaterialList(schem)
+    print(mat_list.block_list(sort=False, block_mode=True))
+    """
     __multi = re.compile('(eggs)|(pickles)|(candles)')
 
     # used in __block_state_handler() to match one of similar properties
@@ -126,7 +167,17 @@ class MaterialList:
 
         return buffer
 
-    def composite_list(self, *, blocks: bool, items: bool, entities: bool, sort=True, **kwargs):
+    def composite_list(self, *, blocks: bool, items: bool, entities: bool, sort=True, **kwargs) -> Counter:
+        """
+        Combine several material lists in one
+
+        :param blocks: Count blocks.
+        :param items: Count items.
+        :param entities: Count entities.
+        :param sort: Sort output in descending order.
+        :param kwargs: Override options.
+        :return: Counter of {'minecraft:<id>': <amount>, ...}
+        """
         if kwargs:
             self.__update_options(kwargs)
 
@@ -143,6 +194,19 @@ class MaterialList:
         return out
 
     def block_list(self, sort=True, **kwargs) -> Counter:
+        """
+        Counts blocks in all regions of the schematic.
+        For specific region use MaterialList.single_region().
+
+        Options:
+        - 'block_mode': Count blocks instead of representing item, overrides 'waterlogging'.
+        (For example by default (False) converts 'minecraft:spruce_wall_sign' to 'minecraft:spruce_sign')
+        - 'waterlogging': Additionally count water buckets for waterlogging blocks.
+
+        :param sort: Sort output in descending order.
+        :param kwargs: Override options.
+        :return: Counter of {'minecraft:<block item>': <amount>, ...}
+        """
         if kwargs:
             self.__update_options(kwargs)
 
@@ -160,6 +224,16 @@ class MaterialList:
         return out
 
     def item_list(self, sort=True, **kwargs) -> Counter:
+        """
+        Counts items in all tile entities and entities of the schematic.
+        For specific region use MaterialList.single_region().
+
+        Relies on the Schematic.nbt_get_items() to store all instances of Item class created during parsing.
+
+        :param sort: Sort output in descending order.
+        :param kwargs: Override options.
+        :return: Counter of {'minecraft:<entity>': <amount>, ...}
+        """
         if kwargs:
             self.__update_options(kwargs)
 
@@ -179,6 +253,14 @@ class MaterialList:
         return out
 
     def entity_list(self, sort=True, **kwargs) -> Counter:
+        """
+        Counts entities in all regions of the schematic.
+        For specific region use MaterialList.single_region().
+
+        :param sort: Sort output in descending order.
+        :param kwargs: Override options.
+        :return: Counter of {'minecraft:<entity>': <amount>, ...}
+        """
         if kwargs:
             self.__update_options(kwargs)
 
@@ -198,22 +280,3 @@ class MaterialList:
         if sort:
             return out.dsort()
         return out
-
-    @staticmethod
-    def localise(data: dict | Counter) -> dict:
-        source_location = os.path.dirname(os.path.abspath(__file__))
-        config_location = os.path.join(source_location, 'config')
-
-        with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
-            names = json.load(f)
-
-        # NOT IMPLEMENTED
-        # r = re.compile(r'.+Flight:\d+.+')
-        # rockets = list(filter(r.match, data))
-        #
-        # if rockets:
-        #     for i in rockets:
-        #         duration = re.search(r'(?<=Flight:)\d+', i).group()
-        #         names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
-
-        return {names[i]: v for i, v in data.items()}
