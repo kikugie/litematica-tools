@@ -68,9 +68,8 @@ class MaterialList:
         with open(os.path.join(config_location, 'list_options.json'), 'r') as f:
             self.__options = json.load(f)
 
-    @staticmethod
-    def single_region(region: Region):
-        region.regions = [region]
+    def single_region(self, region: Region):
+        self.regions = [region]
 
     def __update_options(self, opts: dict):
         for i, v in opts.items():
