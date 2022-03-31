@@ -48,7 +48,7 @@ class MaterialList:
     def __load_config(self):
         """
                 block_ignore.json - List of blocks that will be excluded from the material list.
-                By default contains blocks that don't have an item.
+                By default, contains blocks that don't have an item.
 
                 block_config.json - List of items matching the blocks.
 
@@ -126,7 +126,23 @@ class MaterialList:
 
         return buffer
 
-    def block_list(self, **kwargs) -> Counter:
+    def composite_list(self, *, blocks: bool, items: bool, entities: bool, sort=True, **kwargs):
+        if kwargs:
+            self.__update_options(kwargs)
+
+        out = Counter()
+        if blocks:
+            out += self.block_list(sort=False)
+        if items:
+            out += self.item_list(sort=False)
+        if entities:
+            out += self.entity_list(sort=False)
+
+        if sort:
+            return out.dsort()
+        return out
+
+    def block_list(self, sort=True, **kwargs) -> Counter:
         if kwargs:
             self.__update_options(kwargs)
 
@@ -138,9 +154,12 @@ class MaterialList:
                 if i not in self.__cache:
                     continue
                 out += self.__cache[i]
-        return out.dsort()
 
-    def item_list(self, **kwargs) -> Counter:
+        if sort:
+            return out.dsort()
+        return out
+
+    def item_list(self, sort=True, **kwargs) -> Counter:
         if kwargs:
             self.__update_options(kwargs)
 
@@ -155,9 +174,11 @@ class MaterialList:
                 temp[i.id] = i.count
         out += temp
 
-        return out.dsort()
+        if sort:
+            return out.dsort()
+        return out
 
-    def entity_list(self, **kwargs):
+    def entity_list(self, sort=True, **kwargs) -> Counter:
         if kwargs:
             self.__update_options(kwargs)
 
@@ -173,4 +194,25 @@ class MaterialList:
                     temp.clear()
                     temp[i.id] = 1
         out += temp
-        return out.dsort()
+
+        if sort:
+            return out.dsort()
+        return out
+
+
+def localise(data: dict | Counter) -> dict:
+    source_location = os.path.dirname(os.path.abspath(__file__))
+    config_location = os.path.join(source_location, 'config')
+
+    with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
+        names = json.load(f)
+
+    r = re.compile(r'.+Flight:\d+.+')
+    rockets = list(filter(r.match, data))
+
+    if rockets:
+        for i in rockets:
+            duration = re.search(r'(?<=Flight:)\d+', i).group()
+            names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
+
+    return {names[i]: v for i, v in data.items()}
