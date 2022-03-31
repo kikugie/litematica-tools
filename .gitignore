@@ -8,3 +8,4 @@ venv/
 tests/*.json
 /litematicparse/
 /tests/
+/*.egg-info/
