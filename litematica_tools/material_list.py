@@ -199,20 +199,21 @@ class MaterialList:
             return out.dsort()
         return out
 
+    @staticmethod
+    def localise(data: dict | Counter) -> dict:
+        source_location = os.path.dirname(os.path.abspath(__file__))
+        config_location = os.path.join(source_location, 'config')
 
-def localise(data: dict | Counter) -> dict:
-    source_location = os.path.dirname(os.path.abspath(__file__))
-    config_location = os.path.join(source_location, 'config')
+        with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
+            names = json.load(f)
 
-    with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
-        names = json.load(f)
+        # NOT IMPLEMENTED
+        # r = re.compile(r'.+Flight:\d+.+')
+        # rockets = list(filter(r.match, data))
+        #
+        # if rockets:
+        #     for i in rockets:
+        #         duration = re.search(r'(?<=Flight:)\d+', i).group()
+        #         names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
 
-    r = re.compile(r'.+Flight:\d+.+')
-    rockets = list(filter(r.match, data))
-
-    if rockets:
-        for i in rockets:
-            duration = re.search(r'(?<=Flight:)\d+', i).group()
-            names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
-
-    return {names[i]: v for i, v in data.items()}
+        return {names[i]: v for i, v in data.items()}
