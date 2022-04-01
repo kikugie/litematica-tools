@@ -37,13 +37,11 @@ class Counter(dict):
     def dsort(self, reverse=True):
         return Counter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
 
-    @staticmethod
-    def localise(data: dict) -> dict:
+    def localise(self) -> dict:
         """
         Converts minecraft ids to names.
         Names are configured in 'config/name_references.json'.
 
-        :param data: Dict of {'minecraft:<namespace id>': <amount>, ...}
         :return: Dict of {'<Name>': <amount>, ...}
         """
         source_location = os.path.dirname(os.path.abspath(__file__))
@@ -61,7 +59,7 @@ class Counter(dict):
         #         duration = re.search(r'(?<=Flight:)\d+', i).group()
         #         names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
 
-        return {names[i]: v for i, v in data.items()}
+        return {names[i]: v for i, v in self.items()}
 
 
 class MaterialList:
@@ -70,11 +68,15 @@ class MaterialList:
     Uses data parsed by schematic_parse.py.
 
     Simple usage:
+    ```
     from litematica_tools import *
 
     schem = NBTFile('sample.litematic')
     mat_list = MaterialList(schem)
     print(mat_list.block_list(sort=False, block_mode=True))
+    ```
+
+    Latest supported mc version: 1.18.x
     """
     __multi = re.compile('(eggs)|(pickles)|(candles)')
 
@@ -88,14 +90,15 @@ class MaterialList:
 
     def __load_config(self):
         """
-                block_ignore.json - List of blocks that will be excluded from the material list.
-                By default, contains blocks that don't have an item.
-
-                block_config.json - List of items matching the blocks.
-
-                name_references.json - Names matching the in game id
-
-                list_options.json - Default options for generating lists
+        Files:
+        - block_ignore.json: List of blocks that will be excluded from the material list.
+                             By default, contains blocks that don't have an item.
+        - block_config.json: Describes how some blocks should be converted into items.
+        - name_references.json: Names matching the in game id.
+        - list_options.json: Default options for generating lists.
+        - unstackables.json: List of unstackable items as for the latest supported version.
+        - 16-stackables.json: List of 16x stackable items as for the latest supported version.
+                              See latest supported version in MaterialList.__doc__
         """
         source_location = os.path.dirname(os.path.abspath(__file__))
         config_location = os.path.join(source_location, 'config')
@@ -121,7 +124,7 @@ class MaterialList:
 
     def __cache_palette(self, region: Region):
         """
-                Precomputes items for block state palette entries for faster lookup.
+        Precomputes items for block state palette entries for faster lookup.
         """
         self.__cache = {}
         for i, v in enumerate(region.palette):
