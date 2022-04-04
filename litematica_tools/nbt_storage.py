@@ -131,10 +131,10 @@ class Nbt(Structure):
         :param scan_range: Optional custom range. By default equals to region volume.
         :return: Index of corresponding entry in the palette.
         """
-        dfrange = range(len(region.nbt['blocks']))
+        default_range = range(len(region.nbt['blocks']))
         if scan_range is None:
-            scan_range = dfrange
-        elif scan_range[0] < 0 or scan_range[-1] > dfrange:
+            scan_range = default_range
+        elif scan_range[0] < 0 or scan_range[-1] > default_range[-1]:
             raise BlockOutOfBounds(f'({scan_range[0]}, {scan_range[-1]})')
 
         for i in scan_range:

@@ -64,9 +64,6 @@ class Item:
     inventory: list = field(default=None)
     origin: list = field(default=None)
 
-    def list_instance(self):
-        ItemList.instances.append(self)
-
 
 @dataclass()
 class Entity:
