@@ -2,13 +2,9 @@ import json
 import logging
 import os
 import re
-import tempfile
 
-from mezmorize import Cache
 from .schematic_parse import NBTFile
 from litematica_tools.storage.shared_storage import Region, BlockState
-
-cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.gettempdir(), 'litematica_cache'))
 
 
 class Counter(dict):
@@ -16,6 +12,7 @@ class Counter(dict):
     Extended dict class.
     Supports safely adding to values and dict sorting.
     """
+
     def __init__(self, *args, **kw):
         super(Counter, self).__init__(*args, **kw)
 

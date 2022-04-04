@@ -1,7 +1,7 @@
 import re
 
 from nbtlib import File
-from storage import *
+from .storage import *
 
 
 class NBTFile:
