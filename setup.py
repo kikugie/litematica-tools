@@ -7,7 +7,6 @@ setup(
     include_package_data=True,
     install_requires=[
         'click',
-        'mezmorize',
         'nbtlib',
         'storage'
     ],

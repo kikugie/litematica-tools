@@ -1,23 +1,37 @@
 import time
+import timeit
 
-from litematica_tools import MaterialList, NBT_File
-from litematica_tools.material_list import localise, dsort
+from litematica_tools import *
 
-x = {}
-times = []
-start = time.time()
-schem = NBT_File('schematics/test.nbt')
-print(f'File: {schem.file}')
-bmatl = localise(dsort(MaterialList(schem).block_list()))
-imatl = localise(dsort(MaterialList(schem).item_list()))
-ematl = localise(dsort(MaterialList(schem).entity_list()))
-tmatl = localise(dsort(MaterialList(schem).totals_list()))
-end = time.time()
-times.append(end - start)
+def L_matl():
+    schem = NBTFile('schematics/sample.litematic')
+    matl = MaterialList(schem).block_list()
+    print(matl)
+    # matl = MaterialList(schem).item_list()
+    # print(matl)
+    # matl = MaterialList(schem).entity_list()
+    # print(matl)
 
-print(f'Blocks: {bmatl}')
-print(f'Items: {imatl}')
-print(f'Entities: {ematl}')
-print(f'Totals: {tmatl}')
 
-print(f'Total time: {sum(times) / len(times)} s')
+def S_matl():
+    schem = NBTFile('schematics/sample.schem')
+    matl = MaterialList(schem).block_list()
+    print(matl)
+    # matl = MaterialList(schem).item_list()
+    # print(matl)
+    # matl = MaterialList(schem).entity_list()
+    # print(matl)
+
+def N_matl():
+    schem = NBTFile('schematics/sample.nbt')
+    matl = MaterialList(schem).block_list()
+    print(matl)
+    # matl = MaterialList(schem).item_list()
+    # print(matl)
+    # matl = MaterialList(schem).entity_list()
+    # print(matl)
+
+
+print(timeit.timeit(L_matl, number=1))
+print(timeit.timeit(S_matl, number=1))
+print(timeit.timeit(N_matl, number=1))
