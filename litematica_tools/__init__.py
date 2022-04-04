@@ -1,3 +1,3 @@
 from .material_list import MaterialList, Counter
 from .schematic_parse import NBTFile
-from .shared_storage import Structure, Region
+from litematica_tools.storage.shared_storage import Structure, Region

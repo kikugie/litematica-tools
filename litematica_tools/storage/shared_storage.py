@@ -1,7 +1,18 @@
 from dataclasses import dataclass, field
 from collections import namedtuple
 
-Vector = namedtuple('Vector', ['x', 'y', 'z'])
+
+class Vector(namedtuple('Vector', ['x', 'y', 'z'])):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        # This perfectly works, ignore the warnings lol
+
+    @staticmethod
+    def from_dict(data: dict):
+        if len(data) != 3:
+            raise ValueError('Expected dict of 3 numbers')
+        t = list(data.values())
+        return Vector(t[0], t[1], t[2])
 
 
 @dataclass()
@@ -135,3 +146,5 @@ class BlockOutOfBounds(Exception):
 
     def __str__(self):
         return f'Trying to get block outside the enclosing box at {self.message}!'
+
+a = Vector(x=1, y=2, z=3)

@@ -6,7 +6,7 @@ import tempfile
 
 from mezmorize import Cache
 from .schematic_parse import NBTFile
-from .shared_storage import Region, BlockState
+from litematica_tools.storage.shared_storage import Region, BlockState
 
 cache = Cache(CACHE_TYPE='filesystem', CACHE_DIR=os.path.join(tempfile.gettempdir(), 'litematica_cache'))
 

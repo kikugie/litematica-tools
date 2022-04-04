@@ -1,9 +1,7 @@
 import re
 
 from nbtlib import File
-from .litematic_storage import Litematic
-from .schem_storage import Schem
-from .nbt_storage import Nbt
+from storage import *
 
 
 class NBTFile:
