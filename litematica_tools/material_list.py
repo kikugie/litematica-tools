@@ -1,10 +1,16 @@
 import json
 import logging
 import os
+import pickle
 import re
 
 from .schematic_parse import NBTFile
 from litematica_tools.storage.shared_storage import Region, BlockState
+from functools import wraps
+from hashlib import md5
+
+logging.basicConfig(level=logging.WARNING)
+CACHE_DIR = '../cache/material_list'
 
 
 class Counter(dict):
@@ -76,7 +82,6 @@ class MaterialList:
     Latest supported mc version: 1.18.x
     """
     __multi = re.compile('(eggs)|(pickles)|(candles)')
-
     # used in __block_state_handler() to match one of similar properties
 
     def __init__(self, nbt: NBTFile = None):
@@ -101,23 +106,62 @@ class MaterialList:
         config_location = os.path.join(source_location, 'config')
 
         with open(os.path.join(config_location, 'block_ignore.json'), 'r') as f:
-            self.__ignored_blocks = json.load(f)
+            self._ignored_blocks = json.load(f)
         with open(os.path.join(config_location, 'block_config.json'), 'r') as f:
-            self.__block_configs = json.load(f)
+            self._block_configs = json.load(f)
         with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
-            self.__names = json.load(f)
+            self._names = json.load(f)
         with open(os.path.join(config_location, 'list_options.json'), 'r') as f:
-            self.__options = json.load(f)
+            self.options = json.load(f)
 
     def single_region(self, region: Region):
         self.regions = [region]
 
-    def __update_options(self, opts: dict):
-        for i, v in opts.items():
-            if i in self.__options:
-                self.__options[i] = v
+    @staticmethod
+    def cache_list(method):
+
+        @wraps(method)
+        def wrapper(self, **kwargs):
+            if ('cache', False) in kwargs.items():
+                return method(self, **kwargs)
+
+            setup_hash = md5('{}.{}.{}'.format(
+                self.structure.nbt,
+                json.dumps(self.options),
+                method.__name__
+            ).encode('utf-8')).hexdigest()
+
+            cache_path = os.path.join(CACHE_DIR, str(setup_hash))
+            logging.debug(f'Material list hash: {setup_hash}')
+
+            if os.path.exists(cache_path):
+                with open(cache_path, 'rb') as f:
+                    out = pickle.load(f)
             else:
-                logging.warning('Unknown option provided, ignoring.')
+                out = method(self, **kwargs)
+                with open(cache_path, 'wb') as f:
+                    pickle.dump(out, f)
+
+            return out
+
+        return wrapper
+
+    @staticmethod
+    def update_options(method):
+        ignored_options = ['sort', 'cache']
+
+        @wraps(method)
+        def wrapper(self, **kwargs):
+            if kwargs:
+                for i, v in kwargs.items():
+                    if i in ignored_options:
+                        continue
+                    elif i in self.options:
+                        self.options[i] = v
+                    else:
+                        logging.warning(f'Unknown option {i}, ignoring.')
+            return method(self, **kwargs)
+        return wrapper
 
     def __cache_palette(self, region: Region):
         """
@@ -125,11 +169,11 @@ class MaterialList:
         """
         self.__cache = {}
         for i, v in enumerate(region.palette):
-            if v.name in self.__ignored_blocks:
+            if v.name in self._ignored_blocks:
                 continue
 
             buffer = self.__block_state_handler(v)
-            if not self.__options['block_mode']:
+            if not self.options['block_mode']:
                 buffer = self.__block_handler(v, buffer)
             self.__cache[i] = buffer
 
@@ -140,9 +184,9 @@ class MaterialList:
 
         if ('half', 'upper') in block.properties.items():
             del out[block.name]
-        if self.__options['block_mode']:
+        if self.options['block_mode']:
             return out
-        if self.__options['waterlogging']:
+        if self.options['waterlogging']:
             if ('waterlogged', 'true') in block.properties.items():
                 out['minecraft:water_bucket'] = 1
         test = list(filter(self.__multi.match, block.properties))
@@ -153,12 +197,12 @@ class MaterialList:
     def __block_handler(self, block: BlockState, buffer):
         if block.name not in buffer:
             return buffer
-        if block.name not in self.__block_configs:
+        if block.name not in self._block_configs:
             return buffer
 
-        new = self.__block_configs[block.name]
+        new = self._block_configs[block.name]
         if type(new) == str:
-            self.__block_configs[block.name] = [new]
+            self._block_configs[block.name] = [new]
             new = [new]
 
         del buffer[block.name]
@@ -167,7 +211,9 @@ class MaterialList:
 
         return buffer
 
-    def composite_list(self, *, blocks: bool, items: bool, entities: bool, sort=True, **kwargs) -> Counter:
+    @cache_list
+    @update_options
+    def composite_list(self, *, blocks: bool, items: bool, entities: bool, sort=True, **options) -> Counter:
         """
         Combine several material lists in one
 
@@ -175,11 +221,9 @@ class MaterialList:
         :param items: Count items.
         :param entities: Count entities.
         :param sort: Sort output in descending order.
-        :param kwargs: Override options.
+        :param options: Override options.
         :return: Counter of {'minecraft:<id>': <amount>, ...}
         """
-        if kwargs:
-            self.__update_options(kwargs)
 
         out = Counter()
         if blocks:
@@ -193,7 +237,9 @@ class MaterialList:
             return out.dsort()
         return out
 
-    def block_list(self, sort=True, **kwargs) -> Counter:
+    @cache_list
+    @update_options
+    def block_list(self, sort=True, **options) -> Counter:
         """
         Counts blocks in all regions of the schematic.
         For specific region use MaterialList.single_region().
@@ -204,11 +250,9 @@ class MaterialList:
         - 'waterlogging': Additionally count water buckets for waterlogging blocks.
 
         :param sort: Sort output in descending order.
-        :param kwargs: Override options.
+        :param options: Override options.
         :return: Counter of {'minecraft:<block item>': <amount>, ...}
         """
-        if kwargs:
-            self.__update_options(kwargs)
 
         out = Counter()
         for r in self.regions.values():
@@ -223,7 +267,9 @@ class MaterialList:
             return out.dsort()
         return out
 
-    def item_list(self, sort=True, **kwargs) -> Counter:
+    @cache_list
+    @update_options
+    def item_list(self, sort=True, **options) -> Counter:
         """
         Counts items in all tile entities and entities of the schematic.
         For specific region use MaterialList.single_region().
@@ -231,11 +277,9 @@ class MaterialList:
         Relies on the Schematic.nbt_get_items() to store all instances of Item class created during parsing.
 
         :param sort: Sort output in descending order.
-        :param kwargs: Override options.
+        :param options: Override options.
         :return: Counter of {'minecraft:<entity>': <amount>, ...}
         """
-        if kwargs:
-            self.__update_options(kwargs)
 
         out = Counter()
         temp = {}
@@ -252,23 +296,22 @@ class MaterialList:
             return out.dsort()
         return out
 
-    def entity_list(self, sort=True, **kwargs) -> Counter:
+    @cache_list
+    @update_options
+    def entity_list(self, sort=True, **options) -> Counter:
         """
         Counts entities in all regions of the schematic.
         For specific region use MaterialList.single_region().
 
         :param sort: Sort output in descending order.
-        :param kwargs: Override options.
+        :param options: Override options.
         :return: Counter of {'minecraft:<entity>': <amount>, ...}
         """
-        if kwargs:
-            self.__update_options(kwargs)
 
         out = Counter()
         temp = {}
         for r in self.regions.values():
             for i in r.entities:
-
                 if i.id not in temp:
                     temp[i.id] = 1
                 else:

@@ -108,8 +108,10 @@ class Litematic(Structure):
         for i in te_nbt:
             temp = TileEntity()
             temp.position = Vector(i['x'], i['y'], i['z'])
-            temp.id = region.nbt['BlockStatePalette'][
-                self.get_block_state(region, self.get_index(region, temp.position))]['Name']
+            # temp.id = region.nbt['BlockStatePalette'][
+            #     self.get_block_state(region, self.get_index(region, temp.position))]['Name']
+            # Doesn't work reliably yet
+            temp.id = '#UNKNOWN'
             temp.inventory = self.nbt_get_items(i, container=[region, temp])
             out.append(temp)
         return out

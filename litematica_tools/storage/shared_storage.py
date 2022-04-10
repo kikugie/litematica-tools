@@ -87,6 +87,7 @@ class Structure:
     def __init__(self, nbt=None, *, lazy=False):
         if nbt is not None:
             self.lazy_mode = lazy
+            self.nbt = nbt
 
         self.items = []
 
@@ -136,7 +137,7 @@ class Structure:
         :return: Index of corresponding entry in block_states.
                 (Likely will be put as index param in the get_block_state)
         """
-        return coords[1] * region.size[0] * region.size[1] + coords[2] * region.size[0] + coords[0]
+        return (coords[1]) * region.size[0] * region.size[1] + (coords[2]) * region.size[0] + (coords[0])
 
 
 class BlockOutOfBounds(Exception):
