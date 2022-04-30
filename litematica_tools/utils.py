@@ -39,13 +39,13 @@ class ItemCounter(dict):
         else:
             self[item] = amount
 
-    def sort(self, reverse=True):
+    def sort(self, reverse=True) -> 'ItemCounter':
         return ItemCounter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
 
-    def get_stacks(self):
-        with open(os.path.join(os.path.abspath(__file__), 'config', '16-stackables.json'), 'r') as f:
+    def get_stacks(self) -> 'ItemCounter':
+        with open(os.path.join(os.path.abspath(__file__), '..', 'config', '16-stackables.json'), 'r') as f:
             qstacks = json.load(f)
-        with open(os.path.join(os.path.abspath(__file__), 'config', 'unstackables.json'), 'r') as f:
+        with open(os.path.join(os.path.abspath(__file__), '..', 'config', 'unstackables.json'), 'r') as f:
             nostacks = json.load(f)
 
         out = ItemCounter()
@@ -64,7 +64,7 @@ class ItemCounter(dict):
             out[i] = temp
         return out
 
-    def localise(self) -> dict:
+    def localise(self) -> 'ItemCounter':
         """
         Converts minecraft ids to names.
         Names are configured in 'config/name_references.json'.
@@ -72,6 +72,6 @@ class ItemCounter(dict):
         :return: Dict of {'<Name>': <amount>, ...}
         """
 
-        with open(os.path.join(os.path.abspath(__file__), 'config', 'name_references.json'), 'r') as f:
+        with open(os.path.join(os.path.abspath(__file__), '..', 'config', 'name_references.json'), 'r') as f:
             names = json.load(f)
         return ItemCounter({names[i]: v for i, v in self.items()})

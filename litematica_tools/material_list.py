@@ -42,7 +42,7 @@ class MaterialList:
         self._entity_list = None
 
     @classmethod
-    def open_file(cls, *args, **kwargs):
+    def from_file(cls, *args, **kwargs):
         return MaterialList(NBTFile(*args, **kwargs))
 
     @property

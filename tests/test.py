@@ -1,37 +1,30 @@
-import time
 import timeit
+from pprint import pprint
 
-from litematica_tools import *
+from litematica_tools.storage import Litematic, Schem
+from litematica_tools import MaterialList, NBTFile
 
-def L_matl():
-    schem = NBTFile('schematics/sample.litematic')
-    matl = MaterialList(schem).block_list()
-    print(matl)
-    # matl = MaterialList(schem).item_list()
-    # print(matl)
-    # matl = MaterialList(schem).entity_list()
-    # print(matl)
+def lmatl():
+    lt = NBTFile('schematics/test.litematic')
+    lmatl = MaterialList(lt)
+    # print(lmatl.block_count.localise().sort())
+    print(lmatl.item_count.localise().sort().get_stacks())
+    # print(lmatl.entity_count)
 
+# sc = NBTFile('schematics/test.schem')
+# smatl = MaterialList(sc)
+# # print(smatl.block_count)
+# # print(smatl.item_count)
+# # print(smatl.entity_count)
+#
+# nb = NBTFile('schematics/test.nbt')
+# nmatl = MaterialList(lt)
+# print(nmatl.block_count)
+# print(nmatl.item_count)
+# print(nmatl.entity_count)
 
-def S_matl():
-    schem = NBTFile('schematics/sample.schem')
-    matl = MaterialList(schem).block_list()
-    print(matl)
-    # matl = MaterialList(schem).item_list()
-    # print(matl)
-    # matl = MaterialList(schem).entity_list()
-    # print(matl)
+# print(lmatl.block_count == smatl.block_count == nmatl.block_count)
+# print(lmatl.item_count == smatl.item_count == nmatl.item_count)
+# print(lmatl.entity_count == smatl.entity_count == nmatl.entity_count)
 
-def N_matl():
-    schem = NBTFile('schematics/sample.nbt')
-    matl = MaterialList(schem).block_list()
-    print(matl)
-    # matl = MaterialList(schem).item_list()
-    # print(matl)
-    # matl = MaterialList(schem).entity_list()
-    # print(matl)
-
-
-print(timeit.timeit(L_matl, number=1))
-print(timeit.timeit(S_matl, number=1))
-print(timeit.timeit(N_matl, number=1))
+print(timeit.timeit(lmatl, number=1))
