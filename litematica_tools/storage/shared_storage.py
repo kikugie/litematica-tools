@@ -1,151 +1,233 @@
-from dataclasses import dataclass, field
+import json
+import os.path
+import re
 from collections import namedtuple
+from dataclasses import dataclass, field
+from typing import ClassVar, Iterator, Type
+from abc import ABC, abstractmethod
+
+from nbtlib import File
 
 
-class Vector(namedtuple('Vector', ['x', 'y', 'z'])):
+class Vec3d(namedtuple('Vec3d', ['x', 'y', 'z'])):
     def __init__(self, *args, **kwargs):
         super().__init__()
-        # This perfectly works, ignore the warnings lol
 
-    @staticmethod
-    def from_dict(data: dict):
-        if len(data) != 3:
-            raise ValueError('Expected dict of 3 numbers')
-        t = list(data.values())
-        return Vector(t[0], t[1], t[2])
+    @classmethod
+    def from_dict(cls, data: dict[str, float]):
+        return cls(data['x'], data['y'], data['z'])
+
+    @classmethod
+    def from_list(cls, data: tuple[float] | list[float]):
+        return cls(data[0], data[1], data[2])
+
+    def _add(self, other: tuple[float] | list[float]):
+        return Vec3d(self.x + other[0], self.y + other[1], self.z + other[2])
+
+    def __add__(self, other):
+        return self._add(other)
+
+    def __iadd__(self, other):
+        return self._add(other)
+
+    def __abs__(self):
+        return Vec3d(abs(self.x), abs(self.y), abs(self.z))
+
+    def __repr__(self):
+        return f'Vec3d({self.x}, {self.y}, {self.z})'
+
+    def __str__(self):
+        return f'({self.x}, {self.y}, {self.z})'
 
 
-@dataclass()
+@dataclass
 class Metadata:
     name: str = field(default=None)
-    description: str = field(default=None)
     author: str = field(default=None)
-    size: Vector = field(default=None)
-    region_count: int = field(default=None)
     data_version: int = field(default=None)
-
-    time_created: int = field(default=None)
-    time_modified: int = field(default=None)
-    total_blocks: int = field(default=None)
-    total_volume: int = field(default=None)
-
-    origin: Vector = field(default=None)
-    palette_len: int = field(default=None)
+    size: Vec3d = field(default=None)
+    region_count: int = field(default=None)
 
 
-@dataclass()
-class Region:
-    # block state data
-    palette: list = field(default=None)
-    block_states: list = field(default=None)
-    block_states_data_type: str = field(default=None)
-
-    shift: int = field(default=None)
-    bit_span: int = field(default=None)
-
-    # entities
-    tile_entities: list = field(default=None)
-    entities: list = field(default=None)
-
-    # other
-    nbt: dict = field(default=None)
-    position: Vector = field(default=None)
-    size: Vector = field(default=None)
-    volume: int = field(default=None)
-
-
-@dataclass()
+@dataclass
 class BlockState:
     name: str = field(default=None)
     properties: dict = field(default=None)
 
 
-@dataclass()
-class TileEntity:
+@dataclass
+class Container:
+    nbt: dict = field(default=None)
+    inventory: list['ItemStack'] = field(default_factory=list)
+    rec_inventory: list['ItemStack'] = field(default_factory=list)
+
+
+@dataclass
+class TileEntity(Container):
     id: str = field(default=None)
-    position: Vector = field(default=None)
-    inventory: list = field(default=None)
+    position: Vec3d = field(default=None)
+
+    def __post_init__(self, *args, **kwargs):
+        super(TileEntity, self).__init__(*args, **kwargs)
+
+    def __hash__(self):
+        return id(self)
 
 
-@dataclass()
+@dataclass
 class Item:
-    id: str = field(default=None)
-    count: int = field(default=None)
-    slot: int = field(default=None)
-    inventory: list = field(default=None)
-    origin: list = field(default=None)
-
-
-@dataclass()
-class Entity:
-    id: str = field(default=None)
-    position: Vector = field(default=None)
-    inventory: list = field(default=None)
-
-
-class Structure:
-    def __init__(self, nbt=None, *, lazy=False):
-        if nbt is not None:
-            self.lazy_mode = lazy
-            self.nbt = nbt
-
-        self.items = []
-
-    def nbt_get_items(self, inv: dict, *, container: list = None) -> list:
-        """
-        Used for extracting items from inventories recursively.
-        For general use get_items. (Not yet)
-
-        :param inv: Inventory dict to look for items in.
-                    Usually entries in TileEntities or Entities
-        :param container: Optional param for defining path of the item.
-        :return: List of Item objects.
-        """
-        out = []
-        items = self.items
-
-        def yoink_item(item):
-            temp = Item(id=item['id'],
-                        count=item['Count'],
-                        slot=item['Slot'] if 'Slot' in item else None)
-            if container is not None:
-                temp.origin = container + [item['id']]
-
-            if 'tag' in item:
-                nd = item['tag']
-                if 'BlockEntityTag' in nd:
-                    nd = nd['BlockEntityTag']
-                temp.inventory = self.nbt_get_items(nd, container=temp.origin)
-            items.append(temp)
-            return temp
-
-        if 'Items' in inv:
-            for i in inv['Items']:
-                out.append(yoink_item(i))
-
-        if 'Item' in inv:
-            out.append(yoink_item(inv['Item']))
-
-        return out
+    name: str
+    stack_size: int = field(default=64)
+    _all_items: ClassVar[dict] = field(default={}, init=False)
 
     @staticmethod
-    def get_index(region: Region, coords: list | tuple | Vector) -> int:
+    def _generate_item(name: str):
+        stack = 64
+        with open(os.path.join(os.path.dirname(__file__), '..', 'config', '16-stackables.json'), 'r') as f:
+            qstacks = json.load(f)
+        with open(os.path.join(os.path.dirname(__file__), '..', 'config', 'unstackables.json'), 'r') as f:
+            nstacks = json.load(f)
+        if name in qstacks:
+            stack = 16
+        elif name in nstacks:
+            stack = 1
+        item = Item(name, stack)
+        Item._all_items.update({name: item})
+
+    def __class_getitem__(cls, name: str):
+        if name == '*':
+            return cls._all_items
+        elif name in cls._all_items:
+            return cls._all_items[name]
+        elif re.search(r'\w+:\w+', name) and not re.search(r'[A-Z]', name):
+            Item._generate_item(name)
+            return cls._all_items[name]
+        else:
+            raise KeyError(f'Invalid item name: {name}')
+
+
+@dataclass
+class ItemStack(Container):
+    item: Type[Item] = field(default=None)
+    count: int = field(default=None)
+    slot: int = field(default=None)
+    origin: Container = field(default=None)
+    display_name: str = field(default=None)
+
+    def __post_init__(self, *args, **kwargs):
+        super(ItemStack, self).__init__(*args, **kwargs)
+
+    @property
+    def name(self):
+        return self.item.name
+
+
+@dataclass
+class Entity(Container):
+    id: str = field(default=None)
+    position: Vec3d = field(default=None)
+
+    def __post_init__(self, *args, **kwargs):
+        super(Entity, self).__init__(*args, **kwargs)
+
+
+@dataclass
+class Region(ABC):
+    region_nbt: dict = field(default=None)
+    palette: list = field(default=None)
+    block_states: list = field(default=None)
+    tile_entities: list = field(default=None)
+    entities: list = field(default=None)
+    position: Vec3d = field(default=None)
+    size: Vec3d = field(default=None)
+    volume: int = field(default=None)
+
+    @abstractmethod
+    def get_palette_index(self, index: int) -> int:
+        pass
+
+    @abstractmethod
+    def block_iterator(self, scan_range: range = None) -> Iterator[int]:
+        pass
+
+    @staticmethod
+    def get_inventory(container: 'Container', nbt=None) -> list['ItemStack']:
+        # Passing custom nbt tag to start reading from
+        if nbt is None:
+            nbt = container.nbt
+        if 'Items' not in nbt:
+            return []
+
+        out: list['ItemStack'] = []
+        for i in nbt['Items']:
+            temp = ItemStack()
+            temp.nbt = i
+            temp.item = Item[i['id']]
+            temp.count = i['Count']
+            temp.slot = i['Slot']
+            temp.origin = container
+            temp.inventory = []
+            temp.rec_inventory = []
+            container.rec_inventory.append(temp)
+
+            # Check if the item is a container
+            if 'tag' in temp.nbt:
+                next_dir = temp.nbt['tag']
+                if 'display' in next_dir and 'Name' in next_dir['display']:
+                    temp.display_name = re.search(r'(?<="text":").*(?=")', next_dir['display']['Name']).group()
+                if 'BlockEntityTag' in next_dir:
+                    next_dir = next_dir['BlockEntityTag']
+                temp.inventory = Region.get_inventory(temp, next_dir)
+
+            out.append(temp)
+            container.rec_inventory.extend(temp.inventory)
+        return out
+
+
+@dataclass
+class Structure(ABC):
+    """
+    Base class for all structures.
+    """
+    metadata: Metadata = field(default=None)
+    regions: dict = field(default=None)
+    raw_nbt: dict = field(default=None)
+    name: str = field(default=None)
+
+    @classmethod
+    def from_file(cls, file_path: str, unpack=True, init=True) -> 'Structure':
+        with open(file_path, 'rb') as f:
+            nbt = File.load(f, gzipped=True).unpack() if unpack \
+                else File.load(f, gzipped=True)
+        temp = cls.from_nbt(nbt, init)
+        temp.name = os.path.basename(file_path)
+        return temp
+
+    @classmethod
+    def from_nbt(cls, nbt: dict, init: bool = True) -> 'Structure':
         """
-        :param region: Region object to use data from.
-        :param coords: XYZ values as list, tuple or Vector.
-                       Values at index > 2 will be ignored.
-        :return: Index of corresponding entry in block_states.
-                (Likely will be put as index param in the get_block_state)
+        Initialize a structure from a NBT dict.
+        :param nbt: Dict of NBT data.
+        :param init: Tells region parser whether to parse the regions completely.
+        (Set to False if you have a big file and don't want to parse all of it)
+        :return: Structure object.
         """
-        return (coords[1]) * region.size[0] * region.size[1] + (coords[2]) * region.size[0] + (coords[0])
+        temp = cls()
+        temp.raw_nbt = nbt
+        temp.parse_metadata(nbt['Metadata'])
+        temp.parse_regions(nbt['Regions'], init)
+        return temp
 
+    @abstractmethod
+    def parse_metadata(self, nbt):
+        """
+        Creates Metadata object from NBT data.
+        Should be implemented by subclasses.
+        :param nbt: dict of metadata NBT data.
+        :return:
+        """
+        pass
 
-class BlockOutOfBounds(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
-
-    def __str__(self):
-        return f'Trying to get block outside the enclosing box at {self.message}!'
-
-a = Vector(x=1, y=2, z=3)
+    @abstractmethod
+    def parse_regions(self, nbt, init: bool = True):
+        pass

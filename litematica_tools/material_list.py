@@ -1,325 +1,188 @@
 import json
-import logging
 import os
-import pickle
 import re
+from dataclasses import dataclass, field
 
-from .schematic_parse import NBTFile
-from litematica_tools.storage.shared_storage import Region, BlockState
-from functools import wraps
-from hashlib import md5
-
-logging.basicConfig(level=logging.WARNING)
-CACHE_DIR = '../cache/material_list'
+from .structure_parser import NBTFile
+from litematica_tools.storage.shared_storage import Region, BlockState, Structure, ItemStack
+from litematica_tools.utils import ItemCounter
 
 
-class Counter(dict):
+@dataclass(kw_only=True)
+class MatConfig:
     """
-    Extended dict class.
-    Supports safely adding to values and dict sorting.
+    Configuration class for the material list.
     """
+    ignored_blocks: list = field(default_factory=list)
+    ignored_names: list = field(default_factory=list)
+    block_items: dict = field(default_factory=dict)
+    excluded_names: list = field(default_factory=list)
+    block_mode: bool = False
+    water_logging: bool = True
+    entity_items: bool = True
 
-    def __init__(self, *args, **kw):
-        super(Counter, self).__init__(*args, **kw)
-
-    def __merge(self, other):
-        out = self
-        for i, v in other.items():
-            if i in out:
-                out[i] = out[i] + v
-            else:
-                out[i] = v
-        return out
-
-    def __add__(self, other):
-        return self.__merge(other)
-
-    def __iadd__(self, other):
-        return self.__merge(other)
-
-    def dsort(self, reverse=True):
-        return Counter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
-
-    def localise(self) -> dict:
-        """
-        Converts minecraft ids to names.
-        Names are configured in 'config/name_references.json'.
-
-        :return: Dict of {'<Name>': <amount>, ...}
-        """
-        source_location = os.path.dirname(os.path.abspath(__file__))
-        config_location = os.path.join(source_location, 'config')
-
-        with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
-            names = json.load(f)
-
-        # NOT IMPLEMENTED
-        # r = re.compile(r'.+Flight:\d+.+')
-        # rockets = list(filter(r.match, data))
-        #
-        # if rockets:
-        #     for i in rockets:
-        #         duration = re.search(r'(?<=Flight:)\d+', i).group()
-        #         names[i] = f"{names['minecraft:firework_rocket']} [{duration}]"
-
-        return {names[i]: v for i, v in self.items()}
+    def __post_init__(self, *n, **kw):
+        if 'ignored_blocks' not in kw:
+            with open(os.path.join(os.path.dirname(__file__), 'config', 'ignored_blocks.json'), 'r') as f:
+                self.ignored_blocks = json.load(f)
+        if 'block_items' not in kw:
+            with open(os.path.join(os.path.dirname(__file__), 'config', 'block_items.json'), 'r') as f:
+                self.block_items = json.load(f)
+        if 'excluded_names' not in kw:
+            with open(os.path.join(os.path.dirname(__file__), 'config', 'excluded_display_names.json'), 'r') as f:
+                self.excluded_names = json.load(f)
 
 
 class MaterialList:
-    """
-    Creates advanced material lists from schematic files.
-    Uses data parsed by schematic_parse.py.
+    def __init__(self, structure: Structure, config: MatConfig = MatConfig()):
+        self.structure = structure
+        self.config = config
+        self._block_list = None
+        self._item_list = None
+        self._entity_list = None
 
-    Simple usage:
-    ```
-    from litematica_tools import *
+    @classmethod
+    def open_file(cls, *args, **kwargs):
+        return MaterialList(NBTFile(*args, **kwargs))
 
-    schem = NBTFile('sample.litematic')
-    mat_list = MaterialList(schem)
-    print(mat_list.block_list(sort=False, block_mode=True))
-    ```
+    @property
+    def block_count(self):
+        if self._block_list is not None:
+            return self._block_list
+        else:
+            return self.list_blocks()
 
-    Latest supported mc version: 1.18.x
-    """
-    __multi = re.compile('(eggs)|(pickles)|(candles)')
-    # used in __block_state_handler() to match one of similar properties
+    @block_count.deleter
+    def block_count(self):
+        self._block_list = None
 
-    def __init__(self, nbt: NBTFile = None):
-        if nbt:
-            self.structure = nbt.data
-            self.regions = nbt.data.regions
-        self.__load_config()
+    def list_blocks(self, region: Region = None) -> ItemCounter:
+        self._block_list = ItemCounter()
+        if region is None:
+            regions = list(self.structure.regions.values())
+        else:
+            regions = [region]
 
-    def __load_config(self):
-        """
-        Files:
-        - block_ignore.json: List of blocks that will be excluded from the material list.
-                             By default, contains blocks that don't have an item.
-        - block_config.json: Describes how some blocks should be converted into items.
-        - name_references.json: Names matching the in game id.
-        - list_options.json: Default options for generating lists.
-        - unstackables.json: List of unstackable items as for the latest supported version.
-        - 16-stackables.json: List of 16x stackable items as for the latest supported version.
-                              See latest supported version in MaterialList.__doc__
-        """
-        source_location = os.path.dirname(os.path.abspath(__file__))
-        config_location = os.path.join(source_location, 'config')
-
-        with open(os.path.join(config_location, 'block_ignore.json'), 'r') as f:
-            self._ignored_blocks = json.load(f)
-        with open(os.path.join(config_location, 'block_config.json'), 'r') as f:
-            self._block_configs = json.load(f)
-        with open(os.path.join(config_location, 'name_references.json'), 'r') as f:
-            self._names = json.load(f)
-        with open(os.path.join(config_location, 'list_options.json'), 'r') as f:
-            self.options = json.load(f)
-
-    def single_region(self, region: Region):
-        self.regions = [region]
-
-    @staticmethod
-    def cache_list(method):
-
-        @wraps(method)
-        def wrapper(self, **kwargs):
-            if ('cache', False) in kwargs.items():
-                return method(self, **kwargs)
-
-            setup_hash = md5('{}.{}.{}'.format(
-                self.structure.nbt,
-                json.dumps(self.options),
-                method.__name__
-            ).encode('utf-8')).hexdigest()
-
-            cache_path = os.path.join(CACHE_DIR, str(setup_hash))
-            logging.debug(f'Material list hash: {setup_hash}')
-
-            if os.path.exists(cache_path):
-                with open(cache_path, 'rb') as f:
-                    out = pickle.load(f)
-            else:
-                out = method(self, **kwargs)
-                with open(cache_path, 'wb') as f:
-                    pickle.dump(out, f)
-
-            return out
-
-        return wrapper
-
-    @staticmethod
-    def update_options(method):
-        ignored_options = ['sort', 'cache']
-
-        @wraps(method)
-        def wrapper(self, **kwargs):
-            if kwargs:
-                for i, v in kwargs.items():
-                    if i in ignored_options:
-                        continue
-                    elif i in self.options:
-                        self.options[i] = v
-                    else:
-                        logging.warning(f'Unknown option {i}, ignoring.')
-            return method(self, **kwargs)
-        return wrapper
-
-    def __cache_palette(self, region: Region):
-        """
-        Precomputes items for block state palette entries for faster lookup.
-        """
-        self.__cache = {}
-        for i, v in enumerate(region.palette):
-            if v.name in self._ignored_blocks:
-                continue
-
-            buffer = self.__block_state_handler(v)
-            if not self.options['block_mode']:
-                buffer = self.__block_handler(v, buffer)
-            self.__cache[i] = buffer
-
-    def __block_state_handler(self, block: BlockState):
-        out = {block.name: 1}
-        if not block.properties:
-            return out
-
-        if ('half', 'upper') in block.properties.items():
-            del out[block.name]
-        if self.options['block_mode']:
-            return out
-        if self.options['waterlogging']:
-            if ('waterlogged', 'true') in block.properties.items():
-                out['minecraft:water_bucket'] = 1
-        test = list(filter(self.__multi.match, block.properties))
-        if test:
-            out[block.name] = int(block.properties[test[0]])
-        return out
-
-    def __block_handler(self, block: BlockState, buffer):
-        if block.name not in buffer:
-            return buffer
-        if block.name not in self._block_configs:
-            return buffer
-
-        new = self._block_configs[block.name]
-        if type(new) == str:
-            self._block_configs[block.name] = [new]
-            new = [new]
-
-        del buffer[block.name]
-        for i in new:
-            buffer[i] = 1
-
-        return buffer
-
-    @cache_list
-    @update_options
-    def composite_list(self, *, blocks: bool, items: bool, entities: bool, sort=True, **options) -> Counter:
-        """
-        Combine several material lists in one
-
-        :param blocks: Count blocks.
-        :param items: Count items.
-        :param entities: Count entities.
-        :param sort: Sort output in descending order.
-        :param options: Override options.
-        :return: Counter of {'minecraft:<id>': <amount>, ...}
-        """
-
-        out = Counter()
-        if blocks:
-            out += self.block_list(sort=False)
-        if items:
-            out += self.item_list(sort=False)
-        if entities:
-            out += self.entity_list(sort=False)
-
-        if sort:
-            return out.dsort()
-        return out
-
-    @cache_list
-    @update_options
-    def block_list(self, sort=True, **options) -> Counter:
-        """
-        Counts blocks in all regions of the schematic.
-        For specific region use MaterialList.single_region().
-
-        Options:
-        - 'block_mode': Count blocks instead of representing item, overrides 'waterlogging'.
-        (For example by default (False) converts 'minecraft:spruce_wall_sign' to 'minecraft:spruce_sign')
-        - 'waterlogging': Additionally count water buckets for waterlogging blocks.
-
-        :param sort: Sort output in descending order.
-        :param options: Override options.
-        :return: Counter of {'minecraft:<block item>': <amount>, ...}
-        """
-
-        out = Counter()
-        for r in self.regions.values():
-            self.__cache_palette(r)
-
-            for i in self.structure.block_iterator(r):
-                if i not in self.__cache:
+        for r in regions:
+            palette = self._process_palette(r.palette)
+            ignored_ids = [i for i, v in enumerate(r.palette) if v.name in self.config.ignored_blocks]
+            for i, v in enumerate(r.block_iterator()):
+                if v in ignored_ids:
                     continue
-                out += self.__cache[i]
+                self._block_list.extend(palette[v])
+        return self._block_list
 
-        if sort:
-            return out.dsort()
+    def _process_palette(self, palette: list) -> list[dict[str, int]]:
+        proc_palette = [{}] * len(palette)
+        for i, b in enumerate(palette):
+            if b.name in self.config.ignored_blocks:
+                continue
+            proc_palette[i] = self._process_block_state(b)
+            if self.config.block_mode:
+                continue
+            block_item = self._process_block_item(b)
+            if block_item is not None:
+                del proc_palette[i][b.name]
+                proc_palette[i].update(block_item)
+        return proc_palette
+
+    def _process_block_state(self, block_state: BlockState) -> dict[str, int]:
+        entry: dict[str, int] = {block_state.name: 1}
+        if block_state.properties is None:
+            return entry
+        if ('half', 'top') in block_state.properties:
+            del entry[block_state.name]
+        if self.config.block_mode:
+            return entry
+        if self.config.water_logging and ('waterlogged', 'true') in block_state.properties:
+            entry['minecraft:water_bucket'] = 1
+        if multiplier_property := list(block_state.properties.keys() & ['eggs', 'pickles', 'candles']):
+            entry[multiplier_property[0]] = block_state.properties[multiplier_property[0]]
+        return entry
+
+    def _process_block_item(self, block_state: BlockState) -> dict[str, int]:
+        if block_state.name not in self.config.block_items:
+            return {block_state.name: 1}
+        block_item = self.config.block_items[block_state.name]
+        if isinstance(block_item, str):
+            block_item = [block_item]
+        return {i: 1 for i in block_item}
+
+    @property
+    def item_count(self):
+        if self._item_list is not None:
+            return self._item_list
+        else:
+            return self.list_items()
+
+    @item_count.deleter
+    def item_count(self):
+        self._item_list = None
+
+    def list_items(self, region: Region = None) -> ItemCounter:
+        def filter_names(item_stack: ItemStack) -> bool:
+            if item_stack.display_name is None:
+                return True
+            for i in self.config.excluded_names:
+                if re.search(i, item_stack.display_name):
+                    return False
+            return True
+
+        if region is None:
+            regions = list(self.structure.regions.values())
+        else:
+            regions = [region]
+
+        # Extract all items from all regions
+        item_stack_list = []
+        for r in regions:
+            for i in r.tile_entities:
+                item_stack_list.extend(i.rec_inventory)
+            if self.config.entity_items:
+                for i in r.entities:
+                    item_stack_list.extend(i.rec_inventory)
+
+        # Filter items by display name
+        item_stack_list = filter(filter_names, item_stack_list)
+        self._item_list = ItemCounter({i.name: i.count for i in item_stack_list})
+        # self._item_list = ItemCounter({i.name: i.count for i in filter(
+        #     lambda item: any(re.search(m, item.display_name) for m in self.config.excluded_names), item_stack_list)})
+        return self._item_list
+
+    @property
+    def entity_count(self):
+        if self._entity_list is not None:
+            return self._entity_list
+        else:
+            return self.list_entities()
+
+    @entity_count.deleter
+    def entity_count(self):
+        self._entity_list = None
+
+    def list_entities(self, region: Region = None) -> ItemCounter:
+        if region is None:
+            regions = list(self.structure.regions.values())
+        else:
+            regions = [region]
+
+        # Extract all entities from all regions
+        self._entity_list = ItemCounter()
+        for r in regions:
+            self._entity_list.extend({i.id: 1 for i in r.entities})
+        return self._entity_list
+
+    @property
+    def total_count(self):
+        return self.block_count + self.item_count + self.entity_count
+
+    def composite_list(self, blocks: bool, items: bool, entities: bool) -> ItemCounter:
+        out = ItemCounter()
+        if blocks:
+            out.extend(self.block_count)
+        if items:
+            out.extend(self.item_count)
+        if entities:
+            out.extend(self.entity_count)
         return out
 
-    @cache_list
-    @update_options
-    def item_list(self, sort=True, **options) -> Counter:
-        """
-        Counts items in all tile entities and entities of the schematic.
-        For specific region use MaterialList.single_region().
-
-        Relies on the Schematic.nbt_get_items() to store all instances of Item class created during parsing.
-
-        :param sort: Sort output in descending order.
-        :param options: Override options.
-        :return: Counter of {'minecraft:<entity>': <amount>, ...}
-        """
-
-        out = Counter()
-        temp = {}
-        for i in self.structure.items:
-            if i.id not in temp:
-                temp[i.id] = i.count
-            else:
-                out += temp
-                temp.clear()
-                temp[i.id] = i.count
-        out += temp
-
-        if sort:
-            return out.dsort()
-        return out
-
-    @cache_list
-    @update_options
-    def entity_list(self, sort=True, **options) -> Counter:
-        """
-        Counts entities in all regions of the schematic.
-        For specific region use MaterialList.single_region().
-
-        :param sort: Sort output in descending order.
-        :param options: Override options.
-        :return: Counter of {'minecraft:<entity>': <amount>, ...}
-        """
-
-        out = Counter()
-        temp = {}
-        for r in self.regions.values():
-            for i in r.entities:
-                if i.id not in temp:
-                    temp[i.id] = 1
-                else:
-                    out += temp
-                    temp.clear()
-                    temp[i.id] = 1
-        out += temp
-
-        if sort:
-            return out.dsort()
-        return out
