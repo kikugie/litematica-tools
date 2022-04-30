@@ -3,7 +3,7 @@ import os.path
 import re
 from collections import namedtuple
 from dataclasses import dataclass, field
-from typing import ClassVar, Iterator, Type
+from typing import ClassVar, Type
 from abc import ABC, abstractmethod
 
 from nbtlib import File
@@ -142,33 +142,63 @@ class Region(ABC):
     size: Vec3d = field(default=None)
     volume: int = field(default=None)
 
+    @classmethod
+    def from_nbt(cls, region_nbt: dict, init=True) -> 'Region':
+        temp = cls()
+        temp.region_nbt = region_nbt
+
+        if init:
+            temp.parse_metadata()
+            temp.parse_block_data()
+            temp.parse_tile_entities()
+            temp.parse_entities()
+
+        return temp
+
+    @abstractmethod
+    def parse_metadata(self):
+        pass
+
+    @abstractmethod
+    def parse_block_data(self):
+        pass
+
+    @abstractmethod
+    def parse_tile_entities(self):
+        pass
+
+    @abstractmethod
+    def parse_entities(self):
+        pass
+
     @abstractmethod
     def get_palette_index(self, index: int) -> int:
         pass
 
     @abstractmethod
-    def block_iterator(self, scan_range: range = None) -> Iterator[int]:
+    def block_iterator(self, scan_range: range = None) -> int:
         pass
 
     @staticmethod
-    def get_inventory(container: 'Container', nbt=None) -> list['ItemStack']:
+    def set_inventory(container: 'Container', nbt=None):
         # Passing custom nbt tag to start reading from
         if nbt is None:
             nbt = container.nbt
         if 'Items' not in nbt:
             return []
 
-        out: list['ItemStack'] = []
         for i in nbt['Items']:
             temp = ItemStack()
             temp.nbt = i
             temp.item = Item[i['id']]
             temp.count = i['Count']
-            temp.slot = i['Slot']
+            try:
+                temp.slot = i['Slot']
+            except KeyError:
+                temp.slot = len(container.inventory)
             temp.origin = container
             temp.inventory = []
             temp.rec_inventory = []
-            container.rec_inventory.append(temp)
 
             # Check if the item is a container
             if 'tag' in temp.nbt:
@@ -177,11 +207,12 @@ class Region(ABC):
                     temp.display_name = re.search(r'(?<="text":").*(?=")', next_dir['display']['Name']).group()
                 if 'BlockEntityTag' in next_dir:
                     next_dir = next_dir['BlockEntityTag']
-                temp.inventory = Region.get_inventory(temp, next_dir)
+                Region.set_inventory(temp, next_dir)
 
-            out.append(temp)
+            # Update container
+            container.inventory.append(temp)
+            container.rec_inventory.append(temp)
             container.rec_inventory.extend(temp.inventory)
-        return out
 
 
 @dataclass
@@ -204,19 +235,9 @@ class Structure(ABC):
         return temp
 
     @classmethod
-    def from_nbt(cls, nbt: dict, init: bool = True) -> 'Structure':
-        """
-        Initialize a structure from a NBT dict.
-        :param nbt: Dict of NBT data.
-        :param init: Tells region parser whether to parse the regions completely.
-        (Set to False if you have a big file and don't want to parse all of it)
-        :return: Structure object.
-        """
-        temp = cls()
-        temp.raw_nbt = nbt
-        temp.parse_metadata(nbt['Metadata'])
-        temp.parse_regions(nbt['Regions'], init)
-        return temp
+    @abstractmethod
+    def from_nbt(cls, nbt: dict, init=True) -> 'Structure':
+        pass
 
     @abstractmethod
     def parse_metadata(self, nbt):

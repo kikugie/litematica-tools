@@ -28,12 +28,18 @@ class ItemCounter(dict):
     def extend(self, other: dict):
         for i, v in other.items():
             if i in self:
-                self[i] = self[i] + v
+                self[i] += v
             else:
                 self[i] = v
         return None
 
-    def dsort(self, reverse=True):
+    def append(self, item: str, amount: int):
+        if item in self:
+            self[item] += amount
+        else:
+            self[item] = amount
+
+    def sort(self, reverse=True):
         return ItemCounter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
 
     def get_stacks(self):

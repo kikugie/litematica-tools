@@ -1,4 +1,5 @@
-from .shared_storage import *
+from litematica_tools.storage.shared_storage import *
+from litematica_tools.errors import BlockOutOfBounds
 
 
 class LitematicRegion(Region):
@@ -22,19 +23,6 @@ class LitematicRegion(Region):
         self._bit_span = None
         super().__init__(*args, **kwargs)
 
-    @classmethod
-    def from_nbt(cls, region_nbt: dict, init=True) -> 'LitematicRegion':
-        temp = cls()
-        temp.region_nbt = region_nbt
-
-        if init:
-            temp.parse_metadata()
-            temp.parse_block_data()
-            temp.parse_tile_entities()
-            temp.parse_entities()
-
-        return temp
-
     def parse_metadata(self):
         self.size = Vec3d.from_dict(self.region_nbt['Size'])
         self.position = Vec3d.from_dict(self.region_nbt['Position'])
@@ -53,7 +41,7 @@ class LitematicRegion(Region):
             temp = TileEntity()
             temp.nbt = i
             temp.position = Vec3d.from_dict(i)
-            temp.inventory = self.get_inventory(temp)
+            self.set_inventory(temp)
             # TODO: Uh make this work
             # try:
             #     temp.id = self.palette[
@@ -71,7 +59,7 @@ class LitematicRegion(Region):
             temp = Entity()
             temp.nbt = i
             temp.position = Vec3d.from_list(i['Pos'])
-            temp.inventory = self.get_inventory(temp)
+            self.set_inventory(temp)
             temp.id = i['id']
             self.entities.append(temp)
 
@@ -98,7 +86,7 @@ class LitematicRegion(Region):
 
         return palette_id
 
-    def block_iterator(self, scan_range: range = None) -> Iterator[int]:
+    def block_iterator(self, scan_range: range = None) -> int:
         """
         Yields the index of each block in the region.
         More optimized than looping with get_palette_index() by reducing calculations in the loop.
@@ -183,9 +171,10 @@ class LitematicMetadata(Metadata):
     def __post_init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @staticmethod
-    def from_nbt(md_nbt: dict):
-        temp = LitematicMetadata()
+    @classmethod
+    # TODO: fix .get
+    def from_nbt(cls, md_nbt: dict):
+        temp = cls()
 
         temp.author = md_nbt.get('Author', '')
         temp.description = md_nbt.get('Description', '')
@@ -203,6 +192,21 @@ class LitematicMetadata(Metadata):
 class Litematic(Structure):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+    @classmethod
+    def from_nbt(cls, nbt: dict, init: bool = True) -> 'Litematic':
+        """
+        Initialize a structure from a NBT dict.
+        :param nbt: Dict of NBT data.
+        :param init: Tells region parser whether to parse the regions completely.
+        (Set to False if you have a big file and don't want to parse all of it)
+        :return: Structure object.
+        """
+        temp = cls()
+        temp.raw_nbt = nbt
+        temp.parse_metadata(nbt['Metadata'])
+        temp.parse_regions(nbt['Regions'], init)
+        return temp
 
     def parse_metadata(self, metadata_nbt):
         self.metadata = LitematicMetadata.from_nbt(metadata_nbt)

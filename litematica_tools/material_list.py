@@ -143,8 +143,10 @@ class MaterialList:
                     item_stack_list.extend(i.rec_inventory)
 
         # Filter items by display name
+        self._item_list = ItemCounter()
         item_stack_list = filter(filter_names, item_stack_list)
-        self._item_list = ItemCounter({i.name: i.count for i in item_stack_list})
+        for i in item_stack_list:
+            self._item_list.append(i.name, i.count)
         # self._item_list = ItemCounter({i.name: i.count for i in filter(
         #     lambda item: any(re.search(m, item.display_name) for m in self.config.excluded_names), item_stack_list)})
         return self._item_list
@@ -169,7 +171,8 @@ class MaterialList:
         # Extract all entities from all regions
         self._entity_list = ItemCounter()
         for r in regions:
-            self._entity_list.extend({i.id: 1 for i in r.entities})
+            for i in r.entities:
+                self._entity_list.append(i.id, 1)
         return self._entity_list
 
     @property
