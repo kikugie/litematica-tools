@@ -1,6 +1,8 @@
 import json
 import os
 
+from litematica_tools.storage import Item
+
 
 class ItemCounter(dict):
     """
@@ -43,24 +45,12 @@ class ItemCounter(dict):
         return ItemCounter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
 
     def get_stacks(self) -> 'ItemCounter':
-        with open(os.path.join(os.path.abspath(__file__), '..', 'config', '16-stackables.json'), 'r') as f:
-            qstacks = json.load(f)
-        with open(os.path.join(os.path.abspath(__file__), '..', 'config', 'unstackables.json'), 'r') as f:
-            nostacks = json.load(f)
-
         out = ItemCounter()
         for i, v in self.items():
             temp = [0, 0, 0]
-            if i in nostacks:
-                stack_size = 1
-            elif i in qstacks:
-                stack_size = 16
-            else:
-                stack_size = 64
-
-            temp[0] = v // (stack_size * 27)
-            temp[1] = v % (stack_size * 27) // stack_size
-            temp[2] = v % stack_size
+            temp[0] = v // (Item[i].stack_size * 27)
+            temp[1] = v % (Item[i].stack_size * 27) // Item[i].stack_size
+            temp[2] = v % Item[i].stack_size
             out[i] = temp
         return out
 
