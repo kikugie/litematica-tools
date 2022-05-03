@@ -65,3 +65,12 @@ class ItemCounter(dict):
         with open(os.path.join(os.path.abspath(__file__), '..', 'config', 'name_references.json'), 'r') as f:
             names = json.load(f)
         return ItemCounter({names[i]: v for i, v in self.items()})
+
+    def mod_all(self) -> 'ItemCounter':
+        """
+        :return: ItemCounter({<id: str>: [<name: str>, <amount: str>, <stacks: list[int]>]})
+        """
+        sorted = self.sort()
+        stacks = sorted.get_stacks().values()
+        names = sorted.localise().keys()
+        return ItemCounter({names[i]: [v, stacks, names] for i, v in sorted.items()})

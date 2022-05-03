@@ -97,7 +97,7 @@ class MaterialList:
         if self.config.water_logging and ('waterlogged', 'true') in block_state.properties:
             entry['minecraft:water_bucket'] = 1
         if multiplier_property := list(block_state.properties.keys() & ['eggs', 'pickles', 'candles']):
-            entry[multiplier_property[0]] = block_state.properties[multiplier_property[0]]
+            entry[block_state.name] = int(block_state.properties[multiplier_property[0]])
         return entry
 
     def _process_block_item(self, block_state: BlockState) -> dict[str, int]:
