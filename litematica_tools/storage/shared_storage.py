@@ -5,6 +5,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import ClassVar, Type
 from abc import ABC, abstractmethod
+from litematica_tools.config import CONFIG
 
 from nbtlib import File
 
@@ -70,10 +71,6 @@ class TileEntity(Container):
     def __post_init__(self, *args, **kwargs):
         super(TileEntity, self).__init__(*args, **kwargs)
 
-    def __hash__(self):
-        return id(self)
-
-
 @dataclass
 class Item:
     name: str
@@ -83,13 +80,9 @@ class Item:
     @staticmethod
     def _generate_item(name: str):
         stack = 64
-        with open(os.path.join(os.path.dirname(__file__), '..', 'config', '16-stackables.json'), 'r') as f:
-            qstacks = json.load(f)
-        with open(os.path.join(os.path.dirname(__file__), '..', 'config', 'unstackables.json'), 'r') as f:
-            nstacks = json.load(f)
-        if name in qstacks:
+        if name in CONFIG.qstackables:
             stack = 16
-        elif name in nstacks:
+        elif name in CONFIG.unstackables:
             stack = 1
         item = Item(name, stack)
         Item._all_items.update({name: item})
@@ -204,7 +197,9 @@ class Region(ABC):
             if 'tag' in temp.nbt:
                 next_dir = temp.nbt['tag']
                 if 'display' in next_dir and 'Name' in next_dir['display']:
-                    temp.display_name = re.search(r'(?<="text":").*(?=")', next_dir['display']['Name']).group()
+                    search = re.search(r'(?<="text":").*(?=")', next_dir['display']['Name'])
+                    if search:
+                        temp.display_name = search.group(0)
                 if 'BlockEntityTag' in next_dir:
                     next_dir = next_dir['BlockEntityTag']
                 Region.set_inventory(temp, next_dir)

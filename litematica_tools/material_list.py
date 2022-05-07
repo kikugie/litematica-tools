@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from .structure_parser import NBTFile
 from litematica_tools.storage.shared_storage import Region, BlockState, Structure, ItemStack
 from litematica_tools.utils import ItemCounter
-
+from .config import CONFIG
 
 @dataclass(kw_only=True)
 class MatConfig:
@@ -23,14 +23,11 @@ class MatConfig:
 
     def __post_init__(self, *n, **kw):
         if 'ignored_blocks' not in kw:
-            with open(os.path.join(os.path.dirname(__file__), 'config', 'ignored_blocks.json'), 'r') as f:
-                self.ignored_blocks = json.load(f)
+            self.ignored_blocks = CONFIG.ignored_blocks
         if 'block_items' not in kw:
-            with open(os.path.join(os.path.dirname(__file__), 'config', 'block_items.json'), 'r') as f:
-                self.block_items = json.load(f)
+            self.block_items = CONFIG.block_items
         if 'excluded_names' not in kw:
-            with open(os.path.join(os.path.dirname(__file__), 'config', 'excluded_display_names.json'), 'r') as f:
-                self.excluded_names = json.load(f)
+            self.excluded_names = CONFIG.excluded_display_names
 
 
 class MaterialList:

@@ -1,7 +1,9 @@
 import json
+import logging
 import os
 
 from litematica_tools.storage import Item
+from litematica_tools.config import CONFIG
 
 
 class ItemCounter(dict):
@@ -12,6 +14,8 @@ class ItemCounter(dict):
 
     def __init__(self, *args, **kw):
         super(ItemCounter, self).__init__(*args, **kw)
+        self._stacks: dict[str, tuple] = {}
+        self._names: dict[str, str] = {}
 
     def _add(self, other: dict):
         for i, v in other.items():
@@ -44,33 +48,35 @@ class ItemCounter(dict):
     def sort(self, reverse=True) -> 'ItemCounter':
         return ItemCounter({i: v for i, v in sorted(self.items(), key=lambda item: item[1], reverse=reverse)})
 
-    def get_stacks(self) -> 'ItemCounter':
-        out = ItemCounter()
-        for i, v in self.items():
-            temp = [0, 0, 0]
-            temp[0] = v // (Item[i].stack_size * 27)
-            temp[1] = v % (Item[i].stack_size * 27) // Item[i].stack_size
-            temp[2] = v % Item[i].stack_size
-            out[i] = temp
+    @property
+    def stacks(self) -> 'ItemCounter':
+        if self._stacks.keys() != self.keys():
+            for i, v in self.items():
+                self._stacks[i] = self.get_stacks(i, v)
+        return self._stacks
+
+    @property
+    def names(self) -> 'ItemCounter':
+        if self._names.keys() != self.keys():
+            for i, v in self.items():
+                self._names[i] = self.localise(i)
+        return self._names
+
+    @staticmethod
+    def get_stacks(item: str, count: int) -> tuple:
+        ss = Item[item].stack_size
+        out = (
+            count // (ss * 27),
+            count % (ss * 27) // ss,
+            count % ss
+        )
+        if ss == 1:
+            out = (out[0], 0, out[1])
         return out
 
-    def localise(self) -> 'ItemCounter':
-        """
-        Converts minecraft ids to names.
-        Names are configured in 'config/name_references.json'.
-
-        :return: Dict of {'<Name>': <amount>, ...}
-        """
-
-        with open(os.path.join(os.path.abspath(__file__), '..', 'config', 'name_references.json'), 'r') as f:
-            names = json.load(f)
-        return ItemCounter({names[i]: v for i, v in self.items()})
-
-    def mod_all(self) -> 'ItemCounter':
-        """
-        :return: ItemCounter({<id: str>: [<name: str>, <amount: str>, <stacks: list[int]>]})
-        """
-        sorted = self.sort()
-        stacks = sorted.get_stacks().values()
-        names = sorted.localise().keys()
-        return ItemCounter({names[i]: [v, stacks, names] for i, v in sorted.items()})
+    @staticmethod
+    def localise(item: str) -> str:
+        if item in CONFIG.name_references:
+            return CONFIG.name_references[item]
+        logging.warning(f'Localisation missing for {item}, attempting to parse from name.')
+        return ' '.join([i.capitalize() for i in item.split('_')])
