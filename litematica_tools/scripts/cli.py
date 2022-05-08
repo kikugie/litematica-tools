@@ -4,7 +4,7 @@ import json
 
 from click import group, echo, option, argument, Choice
 from ..material_list import MaterialList
-from ..schematic_parse import NBTFile
+from ..schematic_parser import NBTFile
 
 item_name = "Item"
 total_name = "Total"
