@@ -2,10 +2,7 @@
 cache/
 *.egg_info/
 
-venv/
-
 *.litematic
 tests/*.json
-/litematicparse/
 /tests/
 /*.egg-info/
