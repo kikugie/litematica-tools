@@ -1,12 +1,11 @@
-import json
-import os
 import re
 from dataclasses import dataclass, field
 
-from .structure_parser import NBTFile
 from litematica_tools.storage.shared_storage import Region, BlockState, Structure, ItemStack
 from litematica_tools.utils import ItemCounter
 from .config import CONFIG
+from .structure_parser import NBTFile
+
 
 @dataclass(kw_only=True)
 class MatConfig:
@@ -185,4 +184,3 @@ class MaterialList:
         if entities:
             out.extend(self.entity_count)
         return out
-

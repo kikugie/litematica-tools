@@ -1,13 +1,13 @@
-import json
 import os.path
 import re
+from abc import ABC, abstractmethod
 from collections import namedtuple
 from dataclasses import dataclass, field
-from typing import ClassVar, Type
-from abc import ABC, abstractmethod
-from litematica_tools.config import CONFIG
+from typing import ClassVar, Type, Iterable
 
 from nbtlib import File
+
+from litematica_tools.config import CONFIG
 
 
 class Vec3d(namedtuple('Vec3d', ['x', 'y', 'z'])):
@@ -169,7 +169,7 @@ class Region(ABC):
         pass
 
     @abstractmethod
-    def block_iterator(self, scan_range: range = None) -> int:
+    def block_iterator(self, scan_range: range = None) -> Iterable[int]:
         pass
 
     @staticmethod

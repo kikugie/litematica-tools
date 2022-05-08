@@ -7,8 +7,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'click',
-        'nbtlib',
-        'storage'
+        'nbtlib'
     ],
     entry_points={
         'console_scripts': [
