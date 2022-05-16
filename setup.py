@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="litematica-tools",
-    version="1.0.1",
+    version="1.0.3a1",
     author="KikuGie",
     author_email="kikugie@duck.com",
     description="Python scripts for interacting with litematica and other formats",
