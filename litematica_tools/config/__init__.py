@@ -1,6 +1,7 @@
-import os
 import json
+import os
 from dataclasses import dataclass
+
 
 @dataclass(frozen=True)
 class _Config:
@@ -13,10 +14,8 @@ def load(filepath):
         return json.load(f)
 
 
-_configs = {}
-for root, _, files in os.walk(os.path.dirname(__file__)):
-    for file in files:
-        if file.endswith('.json'):
-            _configs[os.path.splitext(file)[0]] = load(os.path.join(os.path.dirname(__file__), root, file))
+files = ['block_items.json', 'excluded_display_names.json', 'ignored_blocks.json', 'name_references.json',
+         'qstackables.json', 'unstackables.json']
+_configs = []
 
-CONFIG = _Config(_configs)
+CONFIG = _Config({v.split('.')[0]: load(os.path.join(os.path.dirname(__file__), v)) for v in files})
